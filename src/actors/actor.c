@@ -1,12 +1,13 @@
 #include "actor.h"
 #include "../errors.h"
+#include "../app_state.h"
 #include <malloc.h>
 
-void A_tick(actor* root) {
+void A_tick(actor* root, app_state* state_ptr) {
     assert(root != nullptr, "Non-null root");
     actor* cur_actor = root;
     do {
-        if(cur_actor->thinker) cur_actor->thinker(cur_actor);
+        if(cur_actor->thinker) cur_actor->thinker(cur_actor, state_ptr);
         cur_actor->ticks_since_spawn++;
     } while( (cur_actor = cur_actor->next) );
 }
@@ -40,7 +41,7 @@ void A_despawn(actor* root, actor* to_despawn) {
     cur_actor->next = to_despawn->next;
 }
 
-actor* A_make_actor(float x, float y, void (*thinker)(actor*)) {
+actor* A_make_actor(float x, float y, actor_thinker(thinker)) {
     actor* new_actor = malloc(sizeof(actor));
     new_actor->next = nullptr;
     new_actor->ticks_since_spawn = 0;

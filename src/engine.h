@@ -10,6 +10,7 @@ enum THREAD_STATUS {
     THREAD_RUNNING,
     THREAD_STOPPING,
     THREAD_STOPPED,
+    THREAD_STOP_REQUESTED,
 };
 
 typedef struct thread_info {
@@ -28,7 +29,7 @@ thread_info* E_get_thread_info(pthread_t id);
 
 pthread_mutex_t* E_get_thread_mutex();
 
-pthread_t E_spawn_thread(void * (*routine)(void *));
+pthread_t E_spawn_thread(void * (*routine)(void *), void* arg);
 
 thread_info* E_get_threads();
 

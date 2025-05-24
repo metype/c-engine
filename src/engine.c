@@ -5,6 +5,8 @@
 #include "util.h"
 
 #include <malloc.h>
+#include "errors.h"
+#include "app_state.h"
 
 pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutexattr_t thread_mutex_attr;
@@ -12,17 +14,27 @@ bool thread_initialized = false;
 
 thread_info* threads = nullptr;
 
-void *E_tick(__attribute__((unused)) void *arg)
+void *E_tick(void *arg)
 {
     E_start_thread();
+    app_state* state_ptr = (app_state*)arg;
     bool quit = false;
     actor* root_actor = A_make_actor(0, 0, &test_actor_think);
+    thread_info* this_thread = E_get_thread_info(pthread_self());
     while(!quit)
     {
         E_sleep(1.0f / TICK_RATE);
-        A_tick(root_actor);
-        if(root_actor->ticks_since_spawn > TICK_RATE * 10) quit = true;
+
+        actor* cur_actor = root_actor;
+        do {
+            A_tick(cur_actor, state_ptr);
+            cur_actor = cur_actor->next;
+        } while(cur_actor);
+
         fflush(stdout);
+        if(this_thread->status == THREAD_STOP_REQUESTED) {
+            quit = true;
+        }
     }
     E_end_thread();
     return 0;
@@ -33,6 +45,7 @@ thread_info* E_get_threads() {
 }
 
 thread_info* E_get_thread_info(pthread_t id) {
+    assert(threads != nullptr, "Threads exist.");
     thread_info* current_thread = threads;
     do {
         if(current_thread->thread_id == id) {
@@ -68,9 +81,9 @@ pthread_mutex_t* E_get_thread_mutex() {
     return &thread_mutex;
 }
 
-pthread_t E_spawn_thread(void * (*routine)(void *)) {
+pthread_t E_spawn_thread(void * (*routine)(void *), void* arg) {
     pthread_t tid;
-    pthread_create(&tid, NULL, routine, NULL);
+    pthread_create(&tid, NULL, routine, arg);
     pthread_mutex_lock(E_get_thread_mutex());
     if(!threads) {
         threads = malloc(sizeof(thread_info));

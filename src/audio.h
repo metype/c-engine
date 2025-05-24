@@ -1,18 +1,21 @@
 #ifndef CPROJ_AUDIO_H
 #define CPROJ_AUDIO_H
 
+#include "SDL3_mixer/SDL_mixer.h"
+#include "hashmap.h"
+
 #define NUM_CHANNELS 16
 
-struct LoadedWAV {
+typedef struct LoadedWAV {
     Mix_Chunk* wave;
-};
+} LoadedWAV;
 
-enum ChannelFlags : uint16_t {
+typedef enum : uint16_t {
     CHANNEL_FLAG_LOOP          = 0b00001,
     CHANNEL_FLAG_FADE_OUT      = 0b00010,
     CHANNEL_FLAG_FADE_IN       = 0b00100,
     CHANNEL_DO_NOT_AUTO_SELECT = 0b01000,
-};
+} ChannelFlags;
 
 typedef struct {
     ChannelFlags flags;
@@ -21,45 +24,28 @@ typedef struct {
     uint8_t volume;
 } channel_data;
 
-class audio_manager {
-        public:
-        static void init();
+void audio_init();
 
-        static bool load_audio(const std::string& filePath, const std::string& key);
+bool audio_load_audio(char* filePath, char* key);
 
-        static bool play_audio(int channel, const std::string& key);
+bool audio_play_audio(char* key, int channel);
 
-        static bool play_audio(const std::string& key);
+void audio_stop_audio(int channel);
 
-        static void stop_audio(int channel);
+bool audio_is_audio_playing(int channel);
 
-        static bool is_audio_playing(int channel);
+void audio_free();
 
-        static void free();
+void audio_set_channel_flags(int channel, uint16_t flags);
 
-        static void set_channel_flags(int channel, uint16_t flags);
+void audio_set_channel_fade_in_ms(int channel, uint32_t time);
 
-        static void set_channel_fade_in_ms(int channel, uint32_t time);
+void audio_set_channel_fade_out_ms(int channel, uint32_t time);
 
-        static void set_channel_fade_out_ms(int channel, uint32_t time);
+void audio_set_channel_volume(int channel, uint8_t volume);
 
-        static void set_channel_volume(int channel, uint8_t volume);
+void audio_set_channel_data(int channel, channel_data data);
 
-        static void set_channel_data(int channel, channel_data data);
+void SDLCALL audio_channel_complete_callback(int channel);
 
-        static void SDLCALL channel_complete_callback (int channel);
-
-        private:
-        inline static std::unordered_map<std::string, LoadedWAV> loaded_audio = {};
-        inline static std::unordered_map<int, std::string> last_played_on_each_channel = {};
-        inline static std::unordered_map<int, channel_data> channel_info = {};
-        inline static std::unordered_map<int, bool> channels_stopped;
-        inline static std::vector<int> in_use_channels;
-
-
-        inline static SDL_AudioDeviceID deviceID;
-        inline static int audio_rate;
-        inline static SDL_AudioFormat audio_format;
-        inline static int audio_channels;
-};
 #endif //CPROJ_AUDIO_H
