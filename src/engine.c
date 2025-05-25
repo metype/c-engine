@@ -19,7 +19,7 @@ void *E_tick(void *arg)
     E_start_thread();
     app_state* state_ptr = (app_state*)arg;
     bool quit = false;
-    actor* root_actor = A_make_actor(0, 0, &test_actor_think);
+    actor* root_actor = A_make_actor(0, 0, A_get_actor_def("test_actor"));
     thread_info* this_thread = E_get_thread_info(pthread_self());
     while(!quit)
     {
@@ -45,17 +45,21 @@ thread_info* E_get_threads() {
 }
 
 thread_info* E_get_thread_info(pthread_t id) {
+    pthread_mutex_lock(E_get_thread_mutex());
     assert(threads != nullptr, "Threads exist.");
     thread_info* current_thread = threads;
     do {
         if(current_thread->thread_id == id) {
+            pthread_mutex_unlock(E_get_thread_mutex());
             return current_thread;
         }
         current_thread = current_thread->next;
     } while(current_thread->next);
     if(current_thread->thread_id == id) {
+        pthread_mutex_unlock(E_get_thread_mutex());
         return current_thread;
     }
+    pthread_mutex_unlock(E_get_thread_mutex());
     return nullptr;
 }
 

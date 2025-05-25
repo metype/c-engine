@@ -2,6 +2,7 @@
 #include <pthread.h>
 #include "errors.h"
 #include "audio.h"
+#include "log.h"
 
 hash_map* loaded_audio = {}; //LoadedWAV
 char** last_played_on_each_channel = {}; //std::string
@@ -17,18 +18,18 @@ SDL_AudioDeviceID deviceID;
 pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutexattr_t audio_mutex_attr;
 
-void audio_init() {
+void M_init() {
     pthread_mutex_init(&audio_mutex, &audio_mutex_attr);
     pthread_mutex_lock(&audio_mutex);
     bool success = SDL_Init(SDL_INIT_AUDIO);
     if(!success) {
         printf("%s\n", SDL_GetError());
     }
-    assert(success, "SDL Failed to init!");
+    assert_err(SDL_Init(SDL_INIT_AUDIO), "SDL Failed to init!", SDL_GetError());
 
-    audio_rate = 48000;
-    audio_format = SDL_AUDIO_F32;
-    audio_channels = NUM_CHANNELS;
+    audio_rate = MIX_DEFAULT_FREQUENCY;
+    audio_format = MIX_DEFAULT_FORMAT;
+    audio_channels = MIX_DEFAULT_CHANNELS;
 
     SDL_AudioSpec spec = {audio_format, audio_channels, audio_rate};
 
@@ -37,15 +38,17 @@ void audio_init() {
 
     if(devices == nullptr || device_count == 0) {
         printf("No audio devices found, aborting audio manager.");
+        fflush(stdout);
         return;
     }
 
     if (!Mix_OpenAudio(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK , &spec)) {
         printf("Couldn't open audio: %s", SDL_GetError());
+        fflush(stdout);
         return;
     } else {
         Mix_QuerySpec(&audio_rate, &audio_format, &audio_channels);
-        printf("Opened audio at %d Hz %d bit%s %s\n", audio_rate,
+        L_printf(LOG_LEVEL_INFO, "Opened audio at %d Hz %d bit%s %s\n", audio_rate,
                     (audio_format&0xFF),
                     (SDL_AUDIO_ISFLOAT(audio_format) ? " (float)" : ""),
                     (audio_channels > 2) ? "surround" :
@@ -54,7 +57,7 @@ void audio_init() {
 
     fflush(stdout);
 
-    Mix_ChannelFinished(&audio_channel_complete_callback);
+    Mix_ChannelFinished(&M_channel_complete_callback);
     Mix_AllocateChannels(NUM_CHANNELS);
 
     loaded_audio = malloc(sizeof(hash_map));
@@ -73,11 +76,11 @@ void audio_init() {
     pthread_mutex_unlock(&audio_mutex);
 
     for(int i = 0; i < NUM_CHANNELS; i++) {
-        audio_set_channel_volume(i, 100);
+        M_set_channel_volume(i, 100);
     }
 }
 
-bool audio_load_audio(char* filePath, char* key) {
+bool M_load_audio(char* filePath, char* key) {
     pthread_mutex_lock(&audio_mutex);
     LoadedWAV* wavData = malloc(sizeof(LoadedWAV));
     wavData->wave = Mix_LoadWAV(filePath);
@@ -89,7 +92,7 @@ bool audio_load_audio(char* filePath, char* key) {
     return true;
 }
 
-bool audio_play_audio(char* key, int channel) {
+bool M_play_audio(char* key, int channel) {
     pthread_mutex_lock(&audio_mutex);
     if (channel > NUM_CHANNELS) {
         printf("%s(%s, %i) called but there's only %i channels!!!", __func__, key, channel, NUM_CHANNELS);
@@ -123,7 +126,7 @@ bool audio_play_audio(char* key, int channel) {
     return true;
 }
 
-void audio_stop_audio(int channel) {
+void M_stop_audio(int channel) {
     pthread_mutex_lock(&audio_mutex);
     if(channel > NUM_CHANNELS) {
         printf("%s(%i) called but there's only %i channels!!!", __func__, channel, NUM_CHANNELS);
@@ -138,7 +141,7 @@ void audio_stop_audio(int channel) {
     pthread_mutex_unlock(&audio_mutex);
 }
 
-bool audio_is_audio_playing(int channel) {
+bool M_is_audio_playing(int channel) {
     if(channel > NUM_CHANNELS) {
         printf("%s(%i) called but there's only %i channels!!!", __func__, channel, NUM_CHANNELS);
         return false;
@@ -149,7 +152,7 @@ bool audio_is_audio_playing(int channel) {
     return value;
 }
 
-void audio_set_channel_flags(int channel, uint16_t flags) {
+void M_set_channel_flags(int channel, uint16_t flags) {
     if(channel > NUM_CHANNELS) {
         printf("%s(%i, %i) called but there's only %i channels!!!", __func__, channel, flags, NUM_CHANNELS);
         return;
@@ -159,7 +162,7 @@ void audio_set_channel_flags(int channel, uint16_t flags) {
     pthread_mutex_unlock(&audio_mutex);
 }
 
-void audio_set_channel_fade_in_ms(int channel, uint32_t time) {
+void M_set_channel_fade_in_ms(int channel, uint32_t time) {
     if(channel > NUM_CHANNELS) {
         printf("%s(%i, %i) called but there's only %i channels!!!", __func__, channel, time, NUM_CHANNELS);
         return;
@@ -169,7 +172,7 @@ void audio_set_channel_fade_in_ms(int channel, uint32_t time) {
     pthread_mutex_unlock(&audio_mutex);
 }
 
-void audio_set_channel_fade_out_ms(int channel, uint32_t time) {
+void M_set_channel_fade_out_ms(int channel, uint32_t time) {
     if(channel > NUM_CHANNELS) {
         printf("%s(%i, %i) called but there's only %i channels!!!", __func__, channel, time, NUM_CHANNELS);
         return;
@@ -179,18 +182,18 @@ void audio_set_channel_fade_out_ms(int channel, uint32_t time) {
     pthread_mutex_unlock(&audio_mutex);
 }
 
-void audio_set_channel_volume(int channel, uint8_t volume) {
+void M_set_channel_volume(int channel, uint8_t volume) {
     if(channel > NUM_CHANNELS) {
         printf("%s(%i, %i) called but there's only %i channels!!!", __func__, channel, volume, NUM_CHANNELS);
         return;
     }
     pthread_mutex_lock(&audio_mutex);
-    channel_info[channel].volume = volume;
+    channel_info[channel].volume = volume; //(int)(((float)volume / 100.0f) * MIX_MAX_VOLUME);
     Mix_Volume(channel, channel_info[channel].volume);
     pthread_mutex_unlock(&audio_mutex);
 }
 
-void audio_set_channel_data(int channel, channel_data data) {
+void M_set_channel_data(int channel, channel_data data) {
     if(channel > NUM_CHANNELS) {
         printf("%s(%i, channel_data) called but there's only %i channels!!!", __func__, channel, NUM_CHANNELS);
         return;
@@ -198,30 +201,29 @@ void audio_set_channel_data(int channel, channel_data data) {
     pthread_mutex_lock(&audio_mutex);
     channel_info[channel] = data;
     pthread_mutex_unlock(&audio_mutex);
-    audio_set_channel_volume(channel, data.volume);
+    M_set_channel_volume(channel, data.volume);
 }
 
-void audio_free() {
-    pthread_mutex_lock(&audio_mutex);
+void M_free() {
     Mix_CloseAudio();
-//    for(int i = 0; i < loaded_audio->capacity; i++){
-//        if(!loaded_audio->arr[i]) continue;
-//        if(!loaded_audio->arr[i]->value) continue;
-//        if(!((LoadedWAV *)loaded_audio->arr[i]->value)->wave) continue;
-//
-//        Mix_FreeChunk(((LoadedWAV *)loaded_audio->arr[i]->value)->wave);
-//
-//        free(((LoadedWAV *)loaded_audio->arr[i]->value)->wave);
-//        free(loaded_audio->arr[i]->value);
-//        free(loaded_audio->arr[i]);
-//    }
-//    free(loaded_audio->arr);
-//    free(loaded_audio);
-    Mix_Quit();
+    pthread_mutex_lock(&audio_mutex);
+    for(int i = 0; i < loaded_audio->capacity; i++){
+        if(!loaded_audio->arr[i]) continue;
+        if(!loaded_audio->arr[i]->value) continue;
+        if(!((LoadedWAV *)loaded_audio->arr[i]->value)->wave) continue;
+
+        Mix_FreeChunk(((LoadedWAV *)loaded_audio->arr[i]->value)->wave);
+
+        free(loaded_audio->arr[i]->value);
+        free(loaded_audio->arr[i]);
+    }
+    free(loaded_audio->arr);
+    free(loaded_audio);
     pthread_mutex_unlock(&audio_mutex);
+    Mix_Quit();
 }
 
-void SDLCALL audio_channel_complete_callback(int channel) {
+void SDLCALL M_channel_complete_callback(int channel) {
     if(channel > NUM_CHANNELS) {
         printf("%s(%i) called but there's only %i channels!!!", __func__, channel, NUM_CHANNELS);
         return;
@@ -231,7 +233,7 @@ void SDLCALL audio_channel_complete_callback(int channel) {
     if((channel_info[channel].flags & CHANNEL_FLAG_LOOP) && !channels_stopped[channel]) {
         pthread_mutex_unlock(&audio_mutex);
 
-        audio_play_audio(last_played_on_each_channel[channel], channel);
+        M_play_audio(last_played_on_each_channel[channel], channel);
 
         pthread_mutex_lock(&audio_mutex);
     }

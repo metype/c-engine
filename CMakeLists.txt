@@ -19,7 +19,7 @@ add_subdirectory(SDL_mixer EXCLUDE_FROM_ALL)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
 
-target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_mixer::SDL3_mixer)
+target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_mixer::SDL3_mixer m)
 
 if(UNIX)
     find_package(PkgConfig REQUIRED)

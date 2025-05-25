@@ -24,28 +24,28 @@ typedef struct {
     uint8_t volume;
 } channel_data;
 
-void audio_init();
+void M_init();
 
-bool audio_load_audio(char* filePath, char* key);
+bool M_load_audio(char* filePath, char* key);
 
-bool audio_play_audio(char* key, int channel);
+bool M_play_audio(char* key, int channel);
 
-void audio_stop_audio(int channel);
+void M_stop_audio(int channel);
 
-bool audio_is_audio_playing(int channel);
+bool M_is_audio_playing(int channel);
 
-void audio_free();
+void M_free();
 
-void audio_set_channel_flags(int channel, uint16_t flags);
+void M_set_channel_flags(int channel, uint16_t flags);
 
-void audio_set_channel_fade_in_ms(int channel, uint32_t time);
+void M_set_channel_fade_in_ms(int channel, uint32_t time);
 
-void audio_set_channel_fade_out_ms(int channel, uint32_t time);
+void M_set_channel_fade_out_ms(int channel, uint32_t time);
 
-void audio_set_channel_volume(int channel, uint8_t volume);
+void M_set_channel_volume(int channel, uint8_t volume);
 
-void audio_set_channel_data(int channel, channel_data data);
+void M_set_channel_data(int channel, channel_data data);
 
-void SDLCALL audio_channel_complete_callback(int channel);
+void SDLCALL M_channel_complete_callback(int channel);
 
 #endif //CPROJ_AUDIO_H

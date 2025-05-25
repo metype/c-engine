@@ -7,24 +7,28 @@
 #include "audio.h"
 
 #include "app_state.h"
+#include "actors/actor.h"
+#include "log.h"
 
 #include <sys/time.h>
 
 SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
 
+    L_init();
+
     app_state* state_ptr = malloc(sizeof(app_state));
 
     if(!SDL_Init(SDL_INIT_VIDEO)) {
-        printf("Could not init video: %s", SDL_GetError());
-        return -1;
+        L_printf(LOG_LEVEL_FATAL, "Could not init video: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
     }
 
     SDL_Window* window = SDL_CreateWindow("Window", 1920, 1080, SDL_WINDOW_RESIZABLE);
     // Check that the window was successfully created
     if (window == nullptr) {
         // In the case that the window could not be made...
-        printf("Could not create window: %s", SDL_GetError());
-        return -1;
+        L_printf(LOG_LEVEL_FATAL, "Could not create window: %s", SDL_GetError());
+        return SDL_APP_FAILURE;
     }
 
     SDL_Renderer* renderer = SDL_CreateRenderer(window, "");
@@ -39,8 +43,10 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     gettimeofday(&tp, nullptr);
     state_ptr->perf_metrics_ptr->iterate_last_called = tp.tv_sec * 1000 + tp.tv_usec / 1000;
 
+    A_register_default_actors();
+    M_init();
     E_spawn_thread(&E_tick, state_ptr);
-    audio_init();
+
 
     SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
@@ -108,6 +114,7 @@ void SDL_AppQuit(void *application_state, SDL_AppResult result) {
     if(application_state == nullptr) return;
     app_state* state_ptr = (app_state*)(application_state);
     SDL_DestroyWindow(state_ptr->window_ptr);
-    audio_free();
+    M_free();
+    L_quit();
     SDL_Quit();
 }

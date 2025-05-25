@@ -2,12 +2,14 @@
 #define CPROJ_ERRORS_H
 #include <stdio.h>
 
-#define assert(cond, msg) do{\
-    if(!DEBUG) {break;}\
-    if( !(cond) ) {\
-        printf("Assert %s failed! (%s) @ %s:%d in %s()", #msg, #cond, __FILE__, __LINE__, __FUNCTION__);\
-        fflush(stdout);\
-        __builtin_trap();\
+#define assert(cond, msg) assert_err(cond, msg, "");
+
+#define assert_err(cond, msg, err_str) do{                                                                                          \
+    if( !(cond) ) {                                                                                                                 \
+        if(!DEBUG) {break;}                                                                                                         \
+        printf("Assert %s failed! (%s) @ %s:%d in %s()!\nErrStr: \"%s\"", #msg, #cond, __FILE__, __LINE__, __FUNCTION__, err_str);  \
+        fflush(stdout);                                                                                                             \
+        __builtin_trap();                                                                                                           \
 }} while(0)
 
 #endif //CPROJ_ERRORS_H

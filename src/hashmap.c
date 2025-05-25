@@ -12,6 +12,7 @@ void map_set_node(node* node, char* key, void* value)
 // like constructor
 void map_init(hash_map* mp)
 {
+
     // Default capacity in this case
     mp->capacity = 100;
     mp->numOfElements = 0;
@@ -130,7 +131,7 @@ void* map_search(hash_map* mp, char* key)
     while (bucketHead != nullptr) {
 
         // Key is found in the hashMap
-        if (bucketHead->key == key) {
+        if (strcmp(bucketHead->key, key) == 0) {
             return bucketHead->value;
         }
         bucketHead = bucketHead->next;
