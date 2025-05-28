@@ -2,7 +2,8 @@
 #define TEST_ACTOR_H
 #include "actor.h"
 
-void test_actor_init(actor* self, app_state* state_ptr);
-void test_actor_think(actor* self, app_state* state_ptr);
+void debug_actor_init(actor* self);
+void debug_actor_think(actor* self);
+void debug_actor_render(actor* self, app_state* state_ptr);
 
 #endif //TEST_ACTOR_H

@@ -16,4 +16,7 @@ void L_set_log_level(uint8_t log_level);
 void L_print(uint8_t log_level, const char* str);
 void L_printf(uint8_t log_level, const char* format, ...);
 void L_quit();
+
+#define printf NOCALL
+
 #endif //CENGINE_LOG_H

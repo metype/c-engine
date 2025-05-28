@@ -1,17 +1,17 @@
 #include "actor.h"
+#include "../log.h"
 #include "../errors.h"
-#include "../app_state.h"
 #include "../hashmap.h"
 #include "test_actor.h"
 #include <malloc.h>
 #include <pthread.h>
 
-void A_tick(actor* root, app_state* state_ptr) {
+void A_tick(actor* root) {
     assert(root != nullptr, "Non-null root");
     actor* cur_actor = root;
     do {
-        if(cur_actor->init && cur_actor->ticks_since_spawn == 0) cur_actor->init(cur_actor, state_ptr);
-        if(cur_actor->thinker) cur_actor->thinker(cur_actor, state_ptr);
+        if(cur_actor->init && cur_actor->ticks_since_spawn == 0) cur_actor->init(cur_actor);
+        if(cur_actor->thinker) cur_actor->thinker(cur_actor);
         cur_actor->ticks_since_spawn++;
     } while( (cur_actor = cur_actor->next) );
 }
@@ -51,6 +51,7 @@ actor* A_make_actor(float x, float y, actor_def* actor_definition) {
     new_actor->ticks_since_spawn = 0;
     new_actor->thinker = actor_definition->thinker;
     new_actor->init = actor_definition->init;
+    new_actor->render = actor_definition->render;
     new_actor->x = x;
     new_actor->y = y;
     return new_actor;
@@ -88,7 +89,8 @@ void A_register_actor_def(char* actor_id, actor_def* actor_def) {
 void A_register_default_actors() {
     pthread_mutex_init(&actor_mutex, &actor_mutex_attr);
     actor_def* test_actor = malloc(sizeof(actor_def));
-    test_actor->thinker = &test_actor_think;
-    test_actor->init = &test_actor_init;
+    test_actor->thinker = &debug_actor_think;
+    test_actor->init = &debug_actor_init;
+    test_actor->render = &debug_actor_render;
     A_register_actor_def("test_actor", test_actor);
 }

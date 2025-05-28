@@ -1,19 +1,23 @@
 #define SDL_MAIN_USE_CALLBACKS
 #include "SDL3/SDL_main.h"
 
-#include <stdio.h>
 #include <stdlib.h>
+#include <sys/time.h>
+
 #include "engine.h"
 #include "audio.h"
-
 #include "app_state.h"
 #include "actors/actor.h"
 #include "log.h"
+#include "rendering.h"
+#include "filesystem.h"
+#include "string.h"
 
-#include <sys/time.h>
+#include "tests/serialization_tests.h"
+
 
 SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
-
+    F_init();
     L_init();
 
     app_state* state_ptr = malloc(sizeof(app_state));
@@ -24,9 +28,8 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     }
 
     SDL_Window* window = SDL_CreateWindow("Window", 1920, 1080, SDL_WINDOW_RESIZABLE);
-    // Check that the window was successfully created
+
     if (window == nullptr) {
-        // In the case that the window could not be made...
         L_printf(LOG_LEVEL_FATAL, "Could not create window: %s", SDL_GetError());
         return SDL_APP_FAILURE;
     }
@@ -47,30 +50,64 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     M_init();
     E_spawn_thread(&E_tick, state_ptr);
 
-
-    SDL_SetRenderDrawColor(renderer, 255, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_SetRenderDrawColor(renderer, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(renderer);
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, SDL_ALPHA_OPAQUE);
+    SDL_RenderDebugText(renderer, 8, 8, "Initializing");
+    SDL_RenderPresent(renderer);
+    SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
     *application_state = state_ptr;
+
+    deserialization_test_run();
+
     return SDL_APP_CONTINUE;
 }
 
+void ref_count_leak_test() {
+    string* str_1 = s("Hello, world!");
+
+    s_cat(str_1, so(" And a goodbye too!"));
+    L_print(LOG_LEVEL_DEBUG, str_1->c_str);
+
+    s_rep(str_1, so("!"), so("?"));
+    L_print(LOG_LEVEL_DEBUG, str_1->c_str);
+
+    s_rep_n(str_1, so("?"), so("!"), 1);
+    L_print(LOG_LEVEL_DEBUG, str_1->c_str);
+
+    ref_dec(&str_1->refcount);
+}
 
 SDL_AppResult SDL_AppIterate(void *application_state) {
     if(application_state == nullptr) return SDL_APP_FAILURE;
     app_state* state_ptr = (app_state*)(application_state);
 
+//    ref_count_leak_test();
+
     struct timeval tp;
     gettimeofday(&tp, nullptr);
-    long ms = tp.tv_sec * 1000 + tp.tv_usec / 1000;
+    long us = tp.tv_sec * 1000000 + tp.tv_usec;
 
-    float delta = (float)(ms - state_ptr->perf_metrics_ptr->iterate_last_called) * 0.001f;
-    state_ptr->perf_metrics_ptr->iterate_last_called = ms;
-    state_ptr->perf_metrics_ptr->dt = delta;
-    state_ptr->perf_metrics_ptr->time_running += delta;
+    long delta = us - state_ptr->perf_metrics_ptr->iterate_last_called;
+    state_ptr->perf_metrics_ptr->iterate_last_called = us;
+    state_ptr->perf_metrics_ptr->dt = (float)delta * 0.00001f;
+    state_ptr->perf_metrics_ptr->time_running += state_ptr->perf_metrics_ptr->dt;
+    state_ptr->perf_metrics_ptr->fps = (1.0f / state_ptr->perf_metrics_ptr->dt);
 
     SDL_SetRenderDrawColor(state_ptr->renderer_ptr, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(state_ptr->renderer_ptr);
+
+    actor* actor_list = E_get_actors();
+    actor* current_actor = actor_list;
+
+    do {
+        if(current_actor->render) current_actor->render(current_actor, state_ptr);
+        current_actor = current_actor->next;
+    } while(current_actor);
+
+    E_release_actors();
+
     SDL_RenderPresent(state_ptr->renderer_ptr);
 
     thread_info* threads = E_get_threads();

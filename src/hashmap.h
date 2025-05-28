@@ -24,11 +24,11 @@ typedef struct hash_map {
 
 void map_init(hash_map* mp);
 
-int map_hash(hash_map* mp, char* key);
+int map_hash(hash_map* mp, const char* key);
 
 void map_insert(hash_map* mp, char* key, void* value);
 
 void map_delete(hash_map* mp, char* key);
 
-void* map_search(hash_map* mp, char* key);
+void* map_search(hash_map* mp, const char* key);
 #endif //CENGINE_HASHMAP_H

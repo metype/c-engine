@@ -25,7 +25,7 @@ void map_init(hash_map* mp)
     }
 }
 
-int map_hash(hash_map* mp, char* key)
+int map_hash(hash_map* mp, const char* key)
 {
     int bucketIndex;
     int sum = 0, factor = 31;
@@ -119,7 +119,7 @@ void map_delete(hash_map* mp, char* key)
     }
 }
 
-void* map_search(hash_map* mp, char* key)
+void* map_search(hash_map* mp, const char* key)
 {
     // Getting the bucket index
     // for the given key

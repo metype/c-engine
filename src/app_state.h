@@ -8,7 +8,7 @@ typedef struct perf_metrics {
     long iterate_last_called;
     float dt;
     double time_running;
-    int fps;
+    float fps;
     int display_dt;
     int max_fps;
     float time_in_tick;

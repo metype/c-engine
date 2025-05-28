@@ -1,43 +1,66 @@
 #include "engine.h"
 #include "actors/actor.h"
-#include "actors/test_actor.h"
 
 #include "util.h"
+#include "definitions.h"
+
+#include "log.h"
 
 #include <malloc.h>
 #include "errors.h"
-#include "app_state.h"
 
 pthread_mutex_t thread_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutexattr_t thread_mutex_attr;
+
+pthread_mutex_t actor_list_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutexattr_t actor_list_mutex_attr;
 bool thread_initialized = false;
 
 thread_info* threads = nullptr;
+actor* actor_list;
 
-void *E_tick(void *arg)
+void *E_tick(__attribute__((unused)) void *arg)
 {
+    pthread_mutex_init(&actor_list_mutex, &actor_list_mutex_attr);
     E_start_thread();
-    app_state* state_ptr = (app_state*)arg;
     bool quit = false;
-    actor* root_actor = A_make_actor(0, 0, A_get_actor_def("test_actor"));
+    pthread_mutex_lock(&actor_list_mutex);
+    actor_list = A_make_actor(0, 0, A_get_actor_def("test_actor"));
+    pthread_mutex_unlock(&actor_list_mutex);
     thread_info* this_thread = E_get_thread_info(pthread_self());
     while(!quit)
     {
         E_sleep(1.0f / TICK_RATE);
 
-        actor* cur_actor = root_actor;
+        pthread_mutex_lock(&actor_list_mutex);
+
+        actor* cur_actor = actor_list;
         do {
-            A_tick(cur_actor, state_ptr);
+            A_tick(cur_actor);
             cur_actor = cur_actor->next;
         } while(cur_actor);
 
+        pthread_mutex_unlock(&actor_list_mutex);
+
         fflush(stdout);
-        if(this_thread->status == THREAD_STOP_REQUESTED) {
-            quit = true;
-        }
+
+        pthread_mutex_lock(E_get_thread_mutex());
+            if(this_thread->status == THREAD_STOP_REQUESTED) {
+                quit = true;
+            }
+        pthread_mutex_unlock(E_get_thread_mutex());
     }
     E_end_thread();
     return 0;
+}
+
+actor* E_get_actors() {
+    pthread_mutex_lock(&actor_list_mutex);
+    return actor_list;
+}
+
+void E_release_actors() {
+    pthread_mutex_unlock(&actor_list_mutex);
 }
 
 thread_info* E_get_threads() {
@@ -87,8 +110,8 @@ pthread_mutex_t* E_get_thread_mutex() {
 
 pthread_t E_spawn_thread(void * (*routine)(void *), void* arg) {
     pthread_t tid;
-    pthread_create(&tid, NULL, routine, arg);
     pthread_mutex_lock(E_get_thread_mutex());
+    pthread_create(&tid, NULL, routine, arg);
     if(!threads) {
         threads = malloc(sizeof(thread_info));
         threads->status = THREAD_STARTING;
@@ -96,16 +119,13 @@ pthread_t E_spawn_thread(void * (*routine)(void *), void* arg) {
         threads->next = nullptr;
         threads->prev = nullptr;
     } else {
-        thread_info* current_thread;
-        do {
-            current_thread = threads->next;
-        } while(current_thread->next);
         thread_info* new_thread = malloc(sizeof(thread_info));
         new_thread->status = THREAD_STARTING;
         new_thread->thread_id = tid;
-        new_thread->next = nullptr;
-        new_thread->prev = current_thread;
-        current_thread->next = new_thread;
+        new_thread->next = threads;
+        new_thread->prev = nullptr;
+        threads = new_thread;
+        new_thread->next->prev = new_thread;
     }
     pthread_mutex_unlock(E_get_thread_mutex());
     return tid;

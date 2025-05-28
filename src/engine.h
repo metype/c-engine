@@ -1,9 +1,9 @@
 #ifndef CPROJ_ENGINE_H
 #define CPROJ_ENGINE_H
 
-#define TICK_RATE 20
-
 #include <pthread.h>
+
+struct actor;
 
 enum THREAD_STATUS {
     THREAD_STARTING,
@@ -32,5 +32,9 @@ pthread_mutex_t* E_get_thread_mutex();
 pthread_t E_spawn_thread(void * (*routine)(void *), void* arg);
 
 thread_info* E_get_threads();
+
+struct actor* E_get_actors();
+
+void E_release_actors();
 
 #endif //CPROJ_ENGINE_H
