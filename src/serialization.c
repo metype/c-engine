@@ -9,8 +9,6 @@
 
 hash_map* registered_serialization_types = nullptr;
 hash_map* registered_deserialization_types = nullptr;
-hash_map* registered_serialization_obj_types = nullptr;
-hash_map* registered_deserialization_obj_types = nullptr;
 
 void J_register_serialization_func(char* id, serialization_func(serializer)) {
     if(!registered_serialization_types) {

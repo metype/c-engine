@@ -59,6 +59,7 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
 
     *application_state = state_ptr;
 
+    serialization_test_run();
     deserialization_test_run();
 
     return SDL_APP_CONTINUE;

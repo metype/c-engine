@@ -34,7 +34,7 @@ string* test_obj_serialize(void* serialized_obj) {
     generic_serialize_value(int_val, int);
     generic_serialize_value(boolean_val, bool);
     generic_serialize_value(float_val, float);
-    generic_serialize_value(string_val, char*);
+    generic_serialize_value_ptr(string_val, char*);
 
     return ret_str;
 }

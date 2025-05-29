@@ -16,8 +16,7 @@
 #define file_ready_serialize(type, obj, var) string* var = s("{\n"); \
 s_cat(var, serialize(type, obj));                           \
 s_rep_n(var, so("\n"), so("\n\t"), -1);                              \
-s_cat(var, so("} "));                                                \
-s_cat(var, so(#type));                                               \
+s_cat(var, so("} " #type));                                                \
 
 #define generic_deserialize_value(val_key, val_type) do { \
 if(strcmp(name_buf, #val_key) == 0) { \
@@ -34,6 +33,12 @@ if(strcmp(name_buf, #val_key) == 0) { \
 #define generic_serialize_value(val_key, val_type) do {\
     s_cat(ret_str, s(#val_key " "));                           \
     s_cat(ret_str, serialize(val_type, &obj->val_key));    \
+    s_cat(ret_str, s(" " #val_type "\n"));                 \
+} while(0)
+
+#define generic_serialize_value_ptr(val_key, val_type) do {\
+    s_cat(ret_str, s(#val_key " "));                           \
+    s_cat(ret_str, serialize(val_type, obj->val_key));    \
     s_cat(ret_str, s(" " #val_type "\n"));                 \
 } while(0)
 
