@@ -21,7 +21,7 @@ add_executable(${PROJECT_NAME} ${SOURCES})
 
 target_link_libraries(${PROJECT_NAME} PRIVATE SDL3::SDL3 SDL3_image::SDL3_image SDL3_mixer::SDL3_mixer m)
 
-add_compile_options(-Wno-format-truncation)
+add_compile_options(-Wno-format-truncation -Ofast)
 
 if(UNIX)
     find_package(PkgConfig REQUIRED)

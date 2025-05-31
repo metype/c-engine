@@ -11,11 +11,11 @@ typedef enum log_level : uint8_t {
     LOG_LEVEL_DEBUG = 0b00010000,
 } log_level;
 
-void L_init();
-void L_set_log_level(uint8_t log_level);
-void L_print(uint8_t log_level, const char* str);
-void L_printf(uint8_t log_level, const char* format, ...);
-void L_quit();
+void Log_init();
+void Log_set_log_level(uint8_t log_level);
+void Log_print(uint8_t log_level, const char* str);
+void Log_printf(uint8_t log_level, const char* format, ...);
+void Log_quit();
 
 #define printf NOCALL
 

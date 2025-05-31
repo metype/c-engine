@@ -2,15 +2,15 @@
 #include <stdlib.h>
 #include <string.h>
 
-void map_set_node(node* node, char* key, void* value)
+void Map_set_node(node_s* node, char* key, void* value)
 {
     node->key = key;
     node->value = value;
     node->next = nullptr;
-};
+}
 
 // like constructor
-void map_init(hash_map* mp)
+void Map_init(hash_map_s* mp)
 {
 
     // Default capacity in this case
@@ -18,14 +18,14 @@ void map_init(hash_map* mp)
     mp->numOfElements = 0;
 
     // array of size = 1
-    mp->arr = malloc(sizeof(node*) * mp->capacity);
+    mp->arr = malloc(sizeof(node_s*) * mp->capacity);
 
     for(int i = 0;i < mp->capacity ; i++){
         mp->arr[i] = nullptr;
     }
 }
 
-int map_hash(hash_map* mp, const char* key)
+int Map_hash(hash_map_s* mp, const char* key)
 {
     int bucketIndex;
     int sum = 0, factor = 31;
@@ -50,19 +50,20 @@ int map_hash(hash_map* mp, const char* key)
     return bucketIndex;
 }
 
-void map_insert(hash_map* mp, char* key, void* value)
+void Map_insert(hash_map_s* mp, char* key, void* value)
 {
 
     // Getting bucket index for the given
     // key - value pair
-    int bucketIndex = map_hash(mp, key);
-    struct node* newNode = (struct node*)malloc(
+    int bucketIndex = Map_hash(mp, key);
+    struct node_s* newNode = (struct node_s*)malloc(
 
             // Creating a new node
-            sizeof(struct node));
+            sizeof(struct node_s));
 
     // Setting value of node
-    map_set_node(newNode, key, value);
+    Map_set_node(newNode, key, value);
+    mp->numOfElements++;
 
     // Bucket index is empty....no collision
     if (mp->arr[bucketIndex] == nullptr) {
@@ -81,19 +82,20 @@ void map_insert(hash_map* mp, char* key, void* value)
     }
 }
 
-void map_delete(hash_map* mp, char* key)
+void Map_delete(hash_map_s* mp, char* key)
 {
 
     // Getting bucket index for the
     // given key
-    int bucketIndex = map_hash(mp, key);
+    int bucketIndex = Map_hash(mp, key);
 
-    struct node* prevNode = nullptr;
+    struct node_s* prevNode = nullptr;
 
     // Points to the head of
     // linked list present at
     // bucket index
-    struct node* currNode = mp->arr[bucketIndex];
+    struct node_s* currNode = mp->arr[bucketIndex];
+    mp->numOfElements--;
 
     while (currNode != nullptr) {
 
@@ -119,15 +121,15 @@ void map_delete(hash_map* mp, char* key)
     }
 }
 
-void* map_search(hash_map* mp, const char* key)
+void* Map_search(hash_map_s* mp, const char* key)
 {
     // Getting the bucket index
     // for the given key
-    int bucketIndex = map_hash(mp, key);
+    int bucketIndex = Map_hash(mp, key);
 
     // Head of the linked list
     // present at bucket index
-    struct node* bucketHead = mp->arr[bucketIndex];
+    struct node_s* bucketHead = mp->arr[bucketIndex];
     while (bucketHead != nullptr) {
 
         // Key is found in the hashMap

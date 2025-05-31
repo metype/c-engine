@@ -1,3 +1,5 @@
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #ifndef CPROJ_AUDIO_H
 #define CPROJ_AUDIO_H
 
@@ -6,46 +8,49 @@
 
 #define NUM_CHANNELS 16
 
-typedef struct LoadedWAV {
-    Mix_Chunk* wave;
-} LoadedWAV;
-
 typedef enum : uint16_t {
     CHANNEL_FLAG_LOOP          = 0b00001,
     CHANNEL_FLAG_FADE_OUT      = 0b00010,
     CHANNEL_FLAG_FADE_IN       = 0b00100,
     CHANNEL_DO_NOT_AUTO_SELECT = 0b01000,
-} ChannelFlags;
+} channel_flags_e;
+
+
+typedef struct LoadedWAV {
+    Mix_Chunk* wave;
+} loaded_wav_s;
 
 typedef struct {
-    ChannelFlags flags;
+    channel_flags_e flags;
     uint32_t fade_in_ms;
     uint32_t fade_out_ms;
     uint8_t volume;
-} channel_data;
+} channel_data_s;
 
-void M_init();
+void Audio_init();
 
-bool M_load_audio(char* filePath, char* key);
+bool Audio_load(char* filePath, char* key);
 
-bool M_play_audio(char* key, int channel);
+bool Audio_play(char* key, int channel);
 
-void M_stop_audio(int channel);
+void Audio_stop(int channel);
 
-bool M_is_audio_playing(int channel);
+bool Audio_is_playing(int channel);
 
-void M_free();
+void Audio_free();
 
-void M_set_channel_flags(int channel, uint16_t flags);
+void Audio_set_channel_flags(int channel, uint16_t flags);
 
-void M_set_channel_fade_in_ms(int channel, uint32_t time);
+void Audio_set_channel_fade_in_ms(int channel, uint32_t time);
 
-void M_set_channel_fade_out_ms(int channel, uint32_t time);
+void Audio_set_channel_fade_out_ms(int channel, uint32_t time);
 
-void M_set_channel_volume(int channel, uint8_t volume);
+void Audio_set_channel_volume(int channel, uint8_t volume);
 
-void M_set_channel_data(int channel, channel_data data);
+void Audio_set_channel_data(int channel, channel_data_s data);
 
-void SDLCALL M_channel_complete_callback(int channel);
+void SDLCALL Audio_channel_complete_callback(int channel);
 
 #endif //CPROJ_AUDIO_H
+
+#pragma clang diagnostic pop

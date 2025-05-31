@@ -11,30 +11,36 @@ enum THREAD_STATUS {
     THREAD_STOPPING,
     THREAD_STOPPED,
     THREAD_STOP_REQUESTED,
+    THREAD_PAUSED,
 };
 
-typedef struct thread_info {
+typedef struct thread_info_s {
     pthread_t thread_id;
     int status;
-    struct thread_info* next;
-    struct thread_info* prev;
-} thread_info;
+    struct thread_info_s* next;
+    struct thread_info_s* prev;
+} thread_info_s;
 
-void *E_tick(__attribute__((unused)) void *arg);
+void *Engine_tick(__attribute__((unused)) void *arg);
 
-void E_end_thread();
-void E_start_thread();
+void Engine_end_thread();
+void Engine_start_thread();
+void Engine_pause_thread(pthread_t id);
+void Engine_pause_all_threads();
+void Engine_unpause_thread(pthread_t id);
+void Engine_unpause_all_threads();
 
-thread_info* E_get_thread_info(pthread_t id);
+int Engine_get_tick_rate();
 
-pthread_mutex_t* E_get_thread_mutex();
+thread_info_s* Engine_get_thread_info(pthread_t id);
 
-pthread_t E_spawn_thread(void * (*routine)(void *), void* arg);
+pthread_mutex_t* Engine_get_thread_mutex();
+pthread_mutex_t* Engine_get_actor_mutex();
 
-thread_info* E_get_threads();
+pthread_t Engine_spawn_thread(void * (*routine)(void *), void* arg);
 
-struct actor* E_get_actors();
+thread_info_s* Engine_get_threads();
 
-void E_release_actors();
+struct actor_s* Engine_get_actors();
 
 #endif //CPROJ_ENGINE_H

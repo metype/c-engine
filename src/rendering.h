@@ -17,4 +17,6 @@ typedef struct SDL_Renderer SDL_Renderer;
 
 void R_switch_layer(SDL_Renderer* renderer, uint8_t layer);
 void R_render_composite(SDL_Renderer* renderer);
+
+void R_render_scene(SDL_Renderer* renderer);
 #endif //CENGINE_RENDERING_H

@@ -6,48 +6,47 @@
 #include <malloc.h>
 #include <pthread.h>
 
-void A_tick(actor* root) {
-    assert(root != nullptr, "Non-null root");
-    actor* cur_actor = root;
-    do {
-        if(cur_actor->init && cur_actor->ticks_since_spawn == 0) cur_actor->init(cur_actor);
-        if(cur_actor->thinker) cur_actor->thinker(cur_actor);
-        cur_actor->ticks_since_spawn++;
-    } while( (cur_actor = cur_actor->next) );
+void Actor_tick(actor_s* actor) {
+    if(actor == nullptr) return;
+
+    if(actor->init && actor->ticks_since_spawn == 0) actor->init(actor);
+    if(actor->thinker) actor->thinker(actor);
+
+    actor->ticks_since_spawn++;
 }
 
-struct actor* A_get_end_ptr(actor* root) {
+struct actor_s* Actor_list_end(actor_s* root) {
     assert(root != nullptr, "Non-null root");
-    actor* cur_actor = root;
+    actor_s* cur_actor = root;
     do {
         cur_actor = cur_actor->next;
     } while(cur_actor->next);
     return cur_actor;
 }
 
-void A_spawn(actor* root, actor* new_actor) {
-    assert(root != nullptr, "Non-null root");
-    assert(new_actor != nullptr, "Non-null spawned actor");
-    new_actor->next = nullptr;
-    actor* end_ptr = A_get_end_ptr(root);
+void Actor_spawn(actor_s* root, actor_s* new_actor) {
+    assert(root != nullptr, "Root cannot be null!");
+    assert(new_actor != nullptr, "New actor to spawn cannot be null!");
+    actor_s* end_ptr = Actor_list_end(root);
     end_ptr->next = new_actor;
+    new_actor->prev = end_ptr;
 }
 
-void A_despawn(actor* root, actor* to_despawn) {
-    assert(root != nullptr, "Non-null root");
-    assert(to_despawn != nullptr, "Non-null despawned actor");
-    actor* cur_actor = root;
+void Actor_despawn(actor_s* to_despawn) {
+    assert(to_despawn != nullptr, "Actor to despawn cannot be null!");
+    actor_s* next_actor = to_despawn->next;
+    actor_s* prev_actor = to_despawn->prev;
 
-    do {
-        cur_actor = cur_actor->next;
-    } while(cur_actor->next != to_despawn);
+    if(next_actor) next_actor->prev = prev_actor;
+    if(prev_actor) prev_actor->next = next_actor;
 
-    cur_actor->next = to_despawn->next;
+    free(to_despawn);
 }
 
-actor* A_make_actor(float x, float y, actor_def* actor_definition) {
-    actor* new_actor = malloc(sizeof(actor));
+actor_s* Actor_create(float x, float y, actor_def_s* actor_definition) {
+    actor_s* new_actor = malloc(sizeof(actor_s));
     new_actor->next = nullptr;
+    new_actor->prev = nullptr;
     new_actor->ticks_since_spawn = 0;
     new_actor->thinker = actor_definition->thinker;
     new_actor->init = actor_definition->init;
@@ -57,40 +56,41 @@ actor* A_make_actor(float x, float y, actor_def* actor_definition) {
     return new_actor;
 }
 
-hash_map* actor_defs = nullptr;
+hash_map_s* actor_defs = nullptr;
 pthread_mutex_t actor_mutex = PTHREAD_MUTEX_INITIALIZER;
 pthread_mutexattr_t actor_mutex_attr;
 
-actor_def* A_get_actor_def(char* actor_id) {
-    pthread_mutex_lock(&actor_mutex);
-    if(!actor_defs) {
-        pthread_mutex_unlock(&actor_mutex);
-        A_register_actor_def(nullptr, nullptr);
-        pthread_mutex_lock(&actor_mutex);
-    }
-    actor_def* def = map_get(actor_defs, actor_id, actor_def*);
-    pthread_mutex_unlock(&actor_mutex);
+actor_def_s* Actor_get_def(char* actor_id) {
+    actor_def_s *def = nullptr;
+    mutex_locked_code(&actor_mutex, {
+        if (!actor_defs) return nullptr;
+        def = map_get(actor_defs, actor_id, actor_def_s*);
+    });
     return def;
 }
 
-void A_register_actor_def(char* actor_id, actor_def* actor_def) {
-    pthread_mutex_lock(&actor_mutex);
-    if(!actor_defs) {
-        actor_defs = malloc(sizeof(hash_map));
-        map_init(actor_defs);
-    }
+void Actor_register_def(char* actor_id, actor_init(actor_init), actor_thinker(actor_think), actor_render(actor_render)) {
+    if(!actor_think || !actor_init || !actor_render || !actor_id) return;
 
-    if(actor_id == nullptr || actor_def == nullptr) return;
+    actor_def_s* actor_def = malloc(sizeof(actor_def_s));
+    actor_def->thinker = actor_think;
+    actor_def->init = actor_init;
+    actor_def->render = actor_render;
+    actor_def->actor_id = strdup(actor_id);
 
-    map_set(actor_defs, actor_id, actor_def);
-    pthread_mutex_unlock(&actor_mutex);
+    mutex_locked_code(&actor_mutex, {
+        if (!actor_defs) {
+            actor_defs = malloc(sizeof(hash_map_s));
+            Map_init(actor_defs);
+        }
+
+        map_set(actor_defs, actor_id, actor_def);
+    });
+
 }
 
-void A_register_default_actors() {
+void Actor_register_default_defs() {
     pthread_mutex_init(&actor_mutex, &actor_mutex_attr);
-    actor_def* test_actor = malloc(sizeof(actor_def));
-    test_actor->thinker = &debug_actor_think;
-    test_actor->init = &debug_actor_init;
-    test_actor->render = &debug_actor_render;
-    A_register_actor_def("test_actor", test_actor);
+
+    Actor_register_def("test_actor", &debug_actor_init, &debug_actor_think, &debug_actor_render);
 }

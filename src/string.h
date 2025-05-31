@@ -1,6 +1,7 @@
 #ifndef CENGINE_STRING_H
 #define CENGINE_STRING_H
 
+#include <malloc.h>
 #include "ref.h"
 
 // s(str) Create a new string
@@ -55,9 +56,11 @@ string* S_replace_n(const string* str_1, const string* str_search, const string*
 string* S_copy(const string* str_1);
 
 // Returns the length of a string
-unsigned int S_length(const string* str_1);
+unsigned S_length(const string* str_1);
 
 // Marks this string as final. The next string method that uses it will free the string.
 string *S_final(string* str_1);
+
+string *S_char_to_str(char character);
 
 #endif //CENGINE_STRING_H

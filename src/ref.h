@@ -8,9 +8,9 @@
 #define container_of(ptr, type, member) \
     ((type *)((char *)(ptr) - offsetof(type, member)))
 
-#define ref_counted_free_begin(type, name) type* name = container_of(ref, type, refcount);
+#define ref_counted_free_begin(type, name) type* name = container_of(ref, type, refcount)
 
-#define ref_counted_free_end(name) free(name);
+#define ref_counted_free_end(name) do { free(name); } while(0)
 
 typedef struct ref {
     void (*free)(const struct ref *);
