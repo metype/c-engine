@@ -60,6 +60,7 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     state_ptr->renderer_ptr = renderer;
     state_ptr->perf_metrics_ptr->dt = 0;
     state_ptr->perf_metrics_ptr->time_running = 0;
+    state_ptr->scene = R_init_scene(state_ptr->renderer_ptr);
 
     struct timeval tp;
     gettimeofday(&tp, nullptr);
@@ -75,6 +76,8 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     SDL_RenderDebugText(renderer, 8, 8, "Initializing");
     SDL_RenderPresent(renderer);
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
+
+    SDL_SetHint( SDL_HINT_FRAMEBUFFER_ACCELERATION, "1" );
 
     *application_state = state_ptr;
 
@@ -128,7 +131,7 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
     SDL_SetRenderDrawColor(state_ptr->renderer_ptr, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(state_ptr->renderer_ptr);
 
-    R_render_scene(state_ptr->renderer_ptr);
+    R_render_scene(state_ptr->renderer_ptr, state_ptr->scene);
 
     actor_s* actor_list = Engine_get_actors();
     mutex_locked_code(Engine_get_actor_mutex(), {
@@ -201,21 +204,24 @@ void load_args(int argc, char** argv, argument* all_args, int list_len) {
             s_cat(short_opts_str_str, so(all_args[i].required ? ":" : ""));
             long_opts[it++] = (struct option){all_args[i].long_opt, (all_args[i].required ? required_argument : no_argument), nullptr, all_args[i].short_opt};
         }
-        const char *const short_opts = short_opts_str_str->c_str;
+        const char *short_opts = short_opts_str_str->c_str;
 
         int option_index = 0;
 
         int c = getopt_long(argc, argv, short_opts, long_opts, &option_index);
 
-        if (c == -1)
+        free(long_opts);
+        ref_dec(&short_opts_str_str->refcount);
+
+        if (c == -1) {
+
             break;
+        }
 
         for(int i = 0; i < list_len; i++) {
             if(c == all_args[i].short_opt) {
                 *all_args[i].val = all_args[i].required ? (int)strtol(optarg, nullptr, 10) : 1;
             }
         }
-
-        ref_dec(&short_opts_str_str->refcount);
     }
 }

@@ -4,12 +4,15 @@
 
 #define assert(cond, msg) assert_err(cond, msg, "")
 
-#define assert_err(cond, msg, err_str) do{                                                                                                              \
-    if( !(cond) ) {                                                                                                                                     \
-    if(!DEBUG) {break;}                                                                                                                                 \
-        Log_printf(LOG_LEVEL_ERROR, "Assert %s failed! (%s) @ %s:%d in %s()!\nErrStr: \"%s\"", #msg, #cond, __FILE__, __LINE__, __FUNCTION__, err_str); \
-        fflush(stdout);                                                                                                                                 \
-        __builtin_trap();                                                                                                                               \
-}} while(0)
+#if DEBUG == 1
+    #define assert_err(cond, msg, err_str) do{                                                                                                              \
+        if( !(cond) ) {                                                                                                                                     \
+            Log_printf(LOG_LEVEL_ERROR, "Assert %s failed! (%s) @ %s:%d in %s()!\nErrStr: \"%s\"", #msg, #cond, __FILE__, __LINE__, __FUNCTION__, err_str); \
+            fflush(stdout);                                                                                                                                 \
+            __builtin_trap();                                                                                                                               \
+    }} while(0)
+#else
+    #define assert_err(cond, msg, err_str) do {cond;} while(0)
+#endif
 
 #endif //CPROJ_ERRORS_H

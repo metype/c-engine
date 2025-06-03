@@ -1,34 +1,41 @@
+#include <stdlib.h>
+#include <limits.h>
 #include "math.h"
+#include <math.h>
 
-float float2_dot(float2_s one, float2_s two) {
-    return (one.x * two.x) + (two.y * one.y);
+float2_s float2_rand(float x_max, float y_max) {
+    return float2_rand_d(0, x_max, 0, y_max);
 }
 
-float float3_dot(float3_s one, float3_s two) {
-    return (one.x * two.x) + (two.y * one.y) + (two.y * one.y);
+float2_s float2_rand_d(float x_min, float x_max, float y_min, float y_max) {
+    return (float2_s){f_rand_d(x_min, x_max), f_rand_d(y_min, y_max)};
 }
 
-float2_s float2_perpendicular(float2_s one) {
-    return (float2_s){one.y, -one.x};
+int i_rand(int max) {
+    return i_rand_d(0, max);
 }
 
-float signed_triangle_area(float2_s a, float2_s b, float2_s c) {
-    float2_s ac = {c.x - a.x, c.y - a.y};
-    float2_s ab_perp = float2_perpendicular((float2_s){b.x - a.x, b.y - a.y});
-    return float2_dot(ac, ab_perp) / 2;
+int i_rand_d(int min, int max) {
+    int gap = max - min;
+    return (int)(random() % gap) + min;
 }
 
-bool point_in_triangle(float2_s a, float2_s b, float2_s c, float2_s p, float3_s* weights) {
-    float area_ABP = signed_triangle_area(a, b, p);
-    float area_BCP = signed_triangle_area(b, c, p);
-    float area_CAP = signed_triangle_area(c, a, p);
-    bool inTri = area_ABP >= 0 && area_BCP >= 0 && area_CAP >= 0;
-
-    float invAreaSum = 1 / (area_ABP + area_BCP + area_CAP);
-    float weightA = area_BCP * invAreaSum;
-    float weightB = area_CAP * invAreaSum;
-    float weightC = area_ABP * invAreaSum;
-    if(weights != nullptr) *weights = (float3_s){weightA, weightB, weightC};
-
-    return inTri;
+float f_rand(float max) {
+    return f_rand_d(0, max);
 }
+
+float f_rand_d(float min, float max) {
+    float gap = max - min;
+    int rand_i = i_rand(INT_MAX); // Get an int from 0-65535
+    float rand_f = ((float)rand_i / (float)INT_MAX); // Then convert that to 0-1
+    return (rand_f * gap) + min; // Then convert that to min-max
+}
+
+float3_s float3_rand(float x_max, float y_max, float z_max) {
+    return float3_rand_d(0, x_max, 0, y_max, 0, z_max);
+}
+
+float3_s float3_rand_d(float x_min, float x_max, float y_min, float y_max, float z_min, float z_max) {
+    return (float3_s){f_rand_d(x_min, x_max), f_rand_d(y_min, y_max), f_rand_d(z_min, z_max)};
+}
+

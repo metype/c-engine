@@ -38,9 +38,12 @@ void Audio_init() {
 
         if (devices == nullptr || device_count == 0) {
             Log_print(LOG_LEVEL_ERROR, "No audio devices found, aborting audio manager.");
+            free(devices);
             if(err == 0) pthread_mutex_unlock(&audio_mutex);
             return;
         }
+
+        free(devices);
 
         if (!Mix_OpenAudio(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, &spec)) {
             Log_printf(LOG_LEVEL_ERROR, "Couldn't open audio: %s", SDL_GetError());
