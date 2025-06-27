@@ -33,5 +33,6 @@
     <mapping directory="$PROJECT_DIR$/SDL_mixer/external/tremor" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/SDL_mixer/external/vorbis" vcs="Git" />
     <mapping directory="$PROJECT_DIR$/SDL_mixer/external/wavpack" vcs="Git" />
+    <mapping directory="$PROJECT_DIR$/pthread-win32" vcs="Git" />
   </component>
 </project>

@@ -2,9 +2,26 @@
 #define CENGINE_DEFINITIONS_H
 #pragma once
 
-#include <asm-generic/errno.h>
+
+#if defined(__linux__)
+#define CENGINE_LINUX 1
+#elif defined(__WIN32) || defined(_WIN32_WINNT) || defined(_WIN32)
+#define CENGINE_WIN32 1
+#endif
+
+#if defined(_MSC_VER)
+#define CENGINE_MSVC 1
+#else
+#define CENGINE_GENCOMP 1
+#endif
+
+#if CENGINE_LINUX
+    #include <asm-generic/errno.h>
+#elif CENGINE_WIN32
+    #include "../pthread-win32/pthread.h"
+#endif
+
 #include <stdatomic.h>
-#include <bits/pthreadtypes.h>
 
 #define TICK_RATE 20
 
@@ -13,6 +30,14 @@
 
 #define STR(a) #a
 #define XSTR(a) STR(a)
+
+#ifndef CENGINE_CALL
+#if defined(CENGINE_WIN32) && !defined(__GNUC__)
+#define CENGINE_CALL __cdecl
+#else
+#define CENGINE_CALL
+#endif //defined(CENGINE_WIN32) && !defined(__GNUC__)
+#endif //CENGINE_CALL
 
 #define mutex_locked_code(mutex, expr) do {   \
     int err = pthread_mutex_trylock(mutex);   \

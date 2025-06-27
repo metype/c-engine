@@ -14,19 +14,19 @@
 
 typedef struct ref {
     void (*free)(const struct ref *);
-    int count;
+    _Atomic int count;
 } ref;
 
 static inline void
 ref_inc(const ref *ref)
 {
-    atomic_fetch_add((int *)&ref->count, 1);
+    atomic_fetch_add((_Atomic int*)&ref->count, 1);
 }
 
 static inline void
 ref_dec(const ref *ref)
 {
-    if (atomic_fetch_sub((int *)&ref->count, 1) == 1)
+    if (atomic_fetch_sub((_Atomic int*)&ref->count, 1) == 1)
         ref->free(ref);
 }
 

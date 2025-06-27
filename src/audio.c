@@ -1,10 +1,13 @@
-#include <malloc.h>
 #include <pthread.h>
+#include <malloc.h>
 #include "errors.h"
 #include "audio.h"
 #include "log.h"
-#include "definitions.h"
 
+#if CENGINE_WIN32
+#include "win32_stdlib.h"
+#endif
+//
 hash_map_s* loaded_audio = {};
 char** last_played_on_each_channel = {};
 channel_data_s* channel_info = {};
@@ -12,7 +15,7 @@ bool* channels_stopped;
 
 bool has_audio_not_initialized = true;
 
-pthread_mutex_t audio_mutex = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t audio_mutex;
 pthread_mutexattr_t audio_mutex_attr;
 
 void Audio_init() {
@@ -22,7 +25,7 @@ void Audio_init() {
         if (!success) {
             Log_printf(LOG_LEVEL_ERROR, "%s\n", SDL_GetError());
         }
-        assert_err(SDL_Init(SDL_INIT_AUDIO), "SDL Failed to init!", SDL_GetError());
+        assert_err(SDL_Init(SDL_INIT_AUDIO), "SDL Failed to init!", SDL_GetError(), return);
 
         int audio_rate = MIX_DEFAULT_FREQUENCY;
         SDL_AudioFormat audio_format = MIX_DEFAULT_FORMAT;
@@ -78,7 +81,6 @@ void Audio_init() {
         }
 
         has_audio_not_initialized = false;
-
     });
 }
 
@@ -94,6 +96,8 @@ bool Audio_load(char* filePath, char* key) {
         loaded_wav_s *wavData = malloc(sizeof(loaded_wav_s));
         wavData->wave = Mix_LoadWAV(filePath);
         if (wavData->wave == nullptr) {
+            Log_printf(LOG_LEVEL_ERROR, "Cannot load audio file \"%s\" into key \"%s\"!", filePath, key);
+            Log_printf(LOG_LEVEL_ERROR, "SDL_GetError(): %s", SDL_GetError());
             if(err == 0) pthread_mutex_unlock(&audio_mutex);
             return false;
         }

@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <malloc.h>
 #include <stdarg.h>
 #include <time.h>
 #include <string.h>
@@ -7,6 +6,13 @@
 #include "log.h"
 #include "filesystem.h"
 #include <pthread.h>
+
+#if defined(__linux__)
+    #include <malloc.h>
+#elif defined(__WIN32) || defined(_WIN32_WINNT)
+    #include "./win32_stdlib.h"
+#endif
+
 
 uint8_t current_log_level = ~0;
 file_s log_file;
@@ -109,7 +115,7 @@ void Log_init() {
     pthread_mutex_init(&log_mutex, &log_mutex_attr);
     pthread_mutex_lock(&log_mutex);
 
-    log_file = FS_open_dated("/logs/%s.log", nullptr, FILE_WRITE);
+    log_file = FS_open_dated("/logs/%s.log", nullptr, FA_FILE_WRITE);
 
     pthread_mutex_unlock(&log_mutex);
 

@@ -5,6 +5,11 @@
 #include "../string.h"
 #include "../errors.h"
 #include "../log.h"
+#include "../definitions.h"
+
+#if CENGINE_WIN32
+#include "../win32_stdlib.h"
+#endif
 
 #include <string.h>
 #include <malloc.h>
@@ -90,7 +95,7 @@ test_result* serialization_test_run(int* num_results) {
 
     obj0.next_ptr = &obj1;
 
-    file_s test_file = FS_open_dated("/tests/%s.serialization.test_result", nullptr, FILE_WRITE);
+    file_s test_file = FS_open_dated("/tests/%s.serialization.test_result", nullptr, FA_FILE_WRITE);
 
     file_ready_serialize(test_obj, &obj0, serialized_data);
 
@@ -105,7 +110,7 @@ test_result* serialization_test_run(int* num_results) {
                                                                                                  "\tint_val 9 int\n"
                                                                                                  "\tboolean_val 0 bool\n"
                                                                                                  "\tfloat_val 69.000000 float\n"
-                                                                                                 "\tstring_val Heyo,\u200Bworld! char*\n"
+                                                                                                 "\tstring_val Heyo,\x20\x0Bworld! char*\n"
                                                                                                  "} test_obj") == 0);
 
     fprintf(test_file.f_ptr, "%s", serialized_data->c_str);
@@ -142,11 +147,7 @@ test_result* deserialization_test_run(int* num_results) {
     string* working_dir = sc(FS_get_working_dir());
     s_cat(working_dir, so("/tests"));
 
-    struct stat st = {0};
-
-    if (stat(working_dir->c_str, &st) == -1) {
-        mkdir(working_dir->c_str, 0700);
-    }
+    FS_create_dir_if_not_exist(working_dir->c_str);
 
     s_cat(working_dir, so("/input.serialization.test_result"));
 

@@ -1,8 +1,13 @@
 #ifndef CENGINE_STRING_H
 #define CENGINE_STRING_H
 
-#include <malloc.h>
 #include "ref.h"
+#include "definitions.h"
+#include <stdlib.h>
+
+#if CENGINE_WIN32
+#include "win32_stdlib.h"
+#endif
 
 // s(str) Create a new string
 #define s(str) S_create(str)

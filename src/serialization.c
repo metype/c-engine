@@ -1,11 +1,18 @@
 #include "definitions.h"
-#include <malloc.h>
 #include <string.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include "serialization.h"
 #include "log.h"
-#include "hashmap.h"
+#include "structures/hashmap.h"
 #include "string.h"
+
+#if defined(__linux__)
+#include <malloc.h>
+#include <stdlib.h>
+#elif defined(__WIN32) || defined(_WIN32_WINNT)
+#include "win32_stdlib.h"
+#endif
 
 hash_map_s* registered_serialization_types = nullptr;
 hash_map_s* registered_deserialization_types = nullptr;
@@ -95,7 +102,7 @@ void* Deserialize_block_to_obj(string* str) {
     char type_buf[64];
     unsigned idx = block_end + 2;
     unsigned buf_idx = 0;
-    while(true) {
+    while(1) {
         if(buf_idx >= 64) {
             Log_print(LOG_LEVEL_ERROR, "Failed to parse! Type specifier exceeded length limit!");
             return nullptr;
@@ -190,9 +197,13 @@ void* str_deserialize(string* str) {
 void Register_base_serialization_types() {
     Register_serialization_func("int", &int_serialize);
     Register_deserialization_func("int", &int_deserialize);
-
+#if CENGINE_GENCOMP
     Register_serialization_func("bool", &bool_serialize);
     Register_deserialization_func("bool", &bool_deserialize);
+#elif CENGINE_MSVC
+    Register_serialization_func("bool", &_Bool_serialize);
+    Register_deserialization_func("bool", &_Bool_deserialize);
+#endif
 
     Register_serialization_func("float", &float_serialize);
     Register_deserialization_func("float", &float_deserialize);

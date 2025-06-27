@@ -1,5 +1,7 @@
 #ifndef CENGINE_TEST_SUITE_H
 #define CENGINE_TEST_SUITE_H
+
+#include <stdbool.h>
 #include "../callbacks.h"
 
 typedef struct test_result {
@@ -8,7 +10,7 @@ typedef struct test_result {
 } test_result;
 
 typedef struct test {
-    CALLBACK(test_func, test_result*, int*);
+    M_CALLBACK(test_func, test_result*, int*);
     char* test_name;
 } test;
 
@@ -21,7 +23,7 @@ typedef struct test {
     if(test_result_arr_idx >= test_result_arr_length) {                                  \
         test_result_arr_length++;                                                        \
         void* new_result_list = realloc(results, sizeof(test) * test_result_arr_length); \
-        assert(new_result_list != nullptr, "Result list cannot grow!");                  \
+        assert(new_result_list != nullptr, "Result list cannot grow!", 0);               \
         results = new_result_list;                                                       \
     }                                                                                    \
     results[test_result_arr_idx].success = success_val;                                  \

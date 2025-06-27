@@ -1,15 +1,22 @@
 #ifndef CENGINE_SERIALIZATION_H
 #define CENGINE_SERIALIZATION_H
 
+#include <stdio.h>
+
 #define BLOCK_BEGIN '{'
 #define BLOCK_END '}'
 
-#include <bits/types/FILE.h>
+#if defined(__linux__)
+    #include <bits/types/FILE.h>
+#elif defined(__WIN32) || defined(_WIN32_WINNT)
+    #include "win32_file_wrapper.h"
+#endif
+
 #include "callbacks.h"
 #include "definitions.h"
 
-#define serialization_func(name) CALLBACK(name, string*, void*)
-#define deserialization_func(name) CALLBACK(name, void*, string*)
+#define serialization_func(name) M_CALLBACK(name, string*, void*)
+#define deserialization_func(name) M_CALLBACK(name, void*, string*)
 
 #define serialize(type, obj) Serialize(obj, Get_serialization_func(#type))
 #define deserialize(type, data) Deserialize(data, Get_deserialization_func(#type))

@@ -1,14 +1,22 @@
-#pragma clang diagnostic push
-#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
 #ifndef CPROJ_AUDIO_H
 #define CPROJ_AUDIO_H
 
 #include "SDL3_mixer/SDL_mixer.h"
-#include "hashmap.h"
+#include "structures/hashmap.h"
+#include "definitions.h"
+
+#if CENGINE_CLANG
+#pragma clang diagnostic push
+#pragma ide diagnostic ignored "OCUnusedGlobalDeclarationInspection"
+#endif
 
 #define NUM_CHANNELS 16
 
+#if CENGINE_LINUX
 typedef enum : uint16_t {
+#elif CENGINE_WIN32
+typedef enum {
+#endif
     CHANNEL_FLAG_LOOP          = 0b00001,
     CHANNEL_FLAG_FADE_OUT      = 0b00010,
     CHANNEL_FLAG_FADE_IN       = 0b00100,
@@ -51,6 +59,8 @@ void Audio_set_channel_data(int channel, channel_data_s data);
 
 void SDLCALL Audio_channel_complete_callback(int channel);
 
-#endif //CPROJ_AUDIO_H
-
+#if CENGINE_CLANG
 #pragma clang diagnostic pop
+#endif
+
+#endif //CPROJ_AUDIO_H

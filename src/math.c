@@ -1,7 +1,11 @@
 #include <stdlib.h>
 #include <limits.h>
 #include "math.h"
-#include <math.h>
+#include "definitions.h"
+
+#if CENGINE_WIN32
+#include "win32_stdlib.h"
+#endif
 
 float2_s float2_rand(float x_max, float y_max) {
     return float2_rand_d(0, x_max, 0, y_max);

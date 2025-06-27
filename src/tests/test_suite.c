@@ -2,6 +2,7 @@
 #include "test_suite.h"
 #include "../errors.h"
 #include "../log.h"
+#include "../win32_stdlib.h"
 
 test* all_tests = nullptr;
 unsigned test_list_idx = 0;
@@ -11,7 +12,7 @@ void check_grow_test_list() {
     if(test_list_idx >= test_list_length) {
         test_list_length *= 2;
         void* new_test_list = realloc(all_tests, sizeof(test) * test_list_length);
-        assert(new_test_list != nullptr, "Test list cannot grow!");
+        assert(new_test_list != nullptr, "Test list cannot grow!", return);
         all_tests = new_test_list;
     }
 }

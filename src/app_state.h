@@ -4,6 +4,8 @@
 #include "SDL3/SDL_video.h"
 #include "SDL3/SDL_render.h"
 
+#include "definitions.h"
+
 typedef struct scene scene;
 
 typedef struct perf_metrics {
@@ -11,17 +13,18 @@ typedef struct perf_metrics {
     float dt;
     double time_running;
     float fps;
-    __attribute__((unused)) int display_dt;
-    __attribute__((unused)) int max_fps;
-    __attribute__((unused)) float time_in_tick;
+    int display_dt;
+    int max_fps;
+    float time_in_tick;
+    float tick_timer;
     int tick_rate;
 } perf_metrics_s;
 
 typedef struct app_state {
     SDL_Window* window_ptr;
     SDL_Renderer* renderer_ptr;
-    __attribute__((unused)) SDL_GPUDevice* gpu_device_ptr;
+    SDL_GPUDevice* gpu_device_ptr;
     perf_metrics_s* perf_metrics_ptr;
-    scene* scene;
+    volatile scene* scene;
 } app_state_s;
 #endif //CENGINE_APP_STATE_H

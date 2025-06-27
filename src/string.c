@@ -1,6 +1,8 @@
 #include <malloc.h>
 #include <string.h>
 #include <limits.h>
+#include <stdio.h>
+#include <stdbool.h>
 #include "string.h"
 
 string *S_char_to_str(char character) {
@@ -11,7 +13,7 @@ string *S_char_to_str(char character) {
 }
 
 string* S_convert(char* c_str) {
-    unsigned total_len = strlen(c_str) + 1;
+    long total_len = (long)strlen(c_str) + 1;
     string* str = malloc(sizeof(string));
     str->c_str = c_str;
     str->length = total_len - 1;

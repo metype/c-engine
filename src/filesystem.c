@@ -1,18 +1,29 @@
+#include "filesystem.h"
+#include "log.h"
+#include "string.h"
+#include "definitions.h"
+
+#if CENGINE_LINUX
 #include <unistd.h>
-#include <linux/limits.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <time.h>
-#include "filesystem.h"
-#include "log.h"
-#include "string.h"
+#include <linux/limits.h>
 #include <errno.h>
+#elif CENGINE_WIN32
+#include <fileapi.h>
+#include <errhandlingapi.h>
+#include <winerror.h>
+#include <processenv.h>
+#include "win32_stdlib.h"
+#endif
 
-char working_dir[PATH_MAX];
+static char working_dir[FS_PATH_MAX];
 
+#ifdef __UNIX
 __attribute__((unused)) mode_t convert_fa_flags_to_open(file_access_flags_e access_flags) {
     mode_t open_flags = 0;
     bool has_set_read = false;
@@ -47,27 +58,30 @@ __attribute__((unused)) mode_t convert_fa_flags_to_open(file_access_flags_e acce
                 open_flags |= O_TRUNC;
                 break;
             case FILE_NO_FOLLOW_SYMLINK:
-                open_flags |= O_NOFOLLOW;
+                    open_flags |= O_NOFOLLOW;
+
                 break;
         }
     }
     return open_flags;
+    return 0;
 }
+#endif
 
 char* convert_fa_flags_to_fopen(file_access_flags_e access_flags) {
-    char* flags;
-    if(access_flags & FILE_WRITE) {
-        flags = "w";
-        if(access_flags & FILE_APPEND) {
-            flags = "a";
+    char* flags = malloc(sizeof(char) * 3);
+    if(access_flags & FA_FILE_WRITE) {
+        sprintf(flags, "w");
+        if(access_flags & FA_FILE_APPEND) {
+            sprintf(flags, "a");
         }
     }
-    if(access_flags & FILE_READ) {
-        flags = "r";
-        if(access_flags & FILE_WRITE) {
-            flags = "r+";
-            if(access_flags & FILE_APPEND) {
-                flags = "a+";
+    if(access_flags & FA_FILE_READ) {
+        sprintf(flags, "r");
+        if(access_flags & FA_FILE_WRITE) {
+            sprintf(flags, "r+");
+            if(access_flags & FA_FILE_APPEND) {
+                sprintf(flags, "a+");
             }
         }
     }
@@ -82,7 +96,11 @@ void make_directory(char *path) { // NOLINT(*-no-recursion)
         make_directory(path);
         *sep = '/';
     }
+#if CENGINE_LINUX
     if(mkdir(path, 0777) < 0 && errno != EEXIST) {
+#elif CENGINE_WIN32
+        if(!CreateDirectoryA(path, nullptr) && GetLastError() != ERROR_ALREADY_EXISTS) {
+#endif
         Log_printf(LOG_LEVEL_ERROR, "Failed to create one or more directories for path '%s'", path);
     }
 }
@@ -95,7 +113,28 @@ FILE *fopen_mkdir(const char *path, const char *mode) {
         make_directory(path0);
         free(path0);
     }
+#if CENGINE_LINUX
     return fopen(path,mode);
+#elif CENGINE_WIN32
+    FILE* f = malloc(sizeof(FILE));
+    fopen_s(&f, path, mode);
+    return f;
+#endif
+}
+
+void FS_create_dir_if_not_exist(const char* name) {
+#if CENGINE_LINUX
+    struct stat st = {0};
+
+    if (stat(name, &st) == -1) {
+        mkdir(name, 0700);
+    }
+#elif CENGINE_WIN32
+    DWORD attribs = GetFileAttributesA(name);
+    if(attribs == INVALID_FILE_ATTRIBUTES || (attribs & FILE_ATTRIBUTE_DIRECTORY) == 0) {
+        CreateDirectoryA(name, nullptr);
+    }
+#endif
 }
 
 
@@ -107,7 +146,7 @@ file_s FS_open(const char* path, file_access_flags_e access_flags) {
     char* parent_dir = strdup(path);
 
     for(int i = (int)strlen(path) - 1; i > 0; i--) {
-#ifdef __WIN32__
+#if CENGINE_WIN32
         if(path[i] == '/' || path[i] == '\\') {
 #else
         if(path[i] == '/') {
@@ -123,17 +162,19 @@ file_s FS_open(const char* path, file_access_flags_e access_flags) {
 file_s FS_open_dated(const char* name, const char* date_fmt_str, file_access_flags_e access_flags) {
     string* cwd = sc(FS_get_working_dir());
 
-    struct stat st = {0};
-
-    if (stat(cwd->c_str, &st) == -1) {
-        mkdir(cwd->c_str, 0700);
-    }
+    FS_create_dir_if_not_exist(cwd->c_str);
 
     const int date_str_len = 20;
 
     time_t current_time = time(nullptr);
     char* date_string = malloc(sizeof(char) * date_str_len);
+#if CENGINE_LINUX
     strftime(date_string, date_str_len, (date_fmt_str) ? date_fmt_str : "%Y-%j-%H-%M-%S", localtime(&current_time));
+#elif CENGINE_WIN32
+    struct tm time_struct;
+    localtime_s(&time_struct, &current_time);
+    strftime(date_string, date_str_len, (date_fmt_str) ? date_fmt_str : "%Y-%j-%H-%M-%S", &time_struct);
+#endif
 
     char* file_name = malloc(sizeof(char) * 1024);
 
@@ -150,15 +191,22 @@ file_s FS_open_dated(const char* name, const char* date_fmt_str, file_access_fla
 }
 
 void FS_init() {
+#if CENGINE_LINUX
     if(getcwd(working_dir, sizeof(working_dir)) == nullptr) {
         Log_print(LOG_LEVEL_FATAL, "Cannot get current working directory!");
         exit(-1);
     }
+#elif CENGINE_WIN32
+    if(GetCurrentDirectory(sizeof(working_dir), working_dir)) {
+        Log_print(LOG_LEVEL_FATAL, "Cannot get current working directory!");
+        W32_Exit(-1);
+    }
+#endif
 }
 
 char* FS_get_working_dir() {
-    char* buf = malloc(sizeof(char) * PATH_MAX);
-    snprintf(buf, PATH_MAX, "%s", working_dir);
+    char* buf = malloc(sizeof(char) * FS_PATH_MAX);
+    snprintf(buf, FS_PATH_MAX, "%s", working_dir);
     return buf;
 }
 

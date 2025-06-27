@@ -3,7 +3,11 @@
 
 #include <stdint.h>
 
+#if defined(__linux__)
 typedef enum log_level : uint8_t {
+#elif defined(__WIN32) || defined(_WIN32_WINNT)
+typedef enum log_level {
+#endif
     LOG_LEVEL_INFO = 0b00000001,
     LOG_LEVEL_WARNING = 0b00000010,
     LOG_LEVEL_ERROR = 0b00000100,

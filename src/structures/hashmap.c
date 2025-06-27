@@ -1,6 +1,11 @@
 #include "hashmap.h"
+
+#if defined(__linux__)
 #include <stdlib.h>
 #include <string.h>
+#elif defined(__WIN32) || defined(_WIN32_WINNT)
+#include "win32_stdlib.h"
+#endif
 
 void Map_set_node(node_s* node, char* key, void* value)
 {
