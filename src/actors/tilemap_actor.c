@@ -115,10 +115,10 @@ void tilemap_actor_render(actor_s* self, app_state_s* state_ptr) {
 void tilemap_actor_event(actor_s* self, app_state_s* state_ptr, SDL_Event* event) {
     ACTOR_PRE_EVENT(self, tilemap_actor_data_s);
     struct mapping{ bool* val; SDL_Scancode code; } mappings[] = {
-            {.val = &data->up, .code = SDL_SCANCODE_W},
-            {.val = &data->down, .code = SDL_SCANCODE_S},
-            {.val = &data->left, .code = SDL_SCANCODE_A},
-            {.val = &data->right, .code = SDL_SCANCODE_D}
+            {.val = &data->up, .code = SDL_SCANCODE_S},
+            {.val = &data->down, .code = SDL_SCANCODE_W},
+            {.val = &data->left, .code = SDL_SCANCODE_D},
+            {.val = &data->right, .code = SDL_SCANCODE_A}
     };
     switch(event->type) {
         case SDL_EVENT_KEY_DOWN:
