@@ -26,85 +26,135 @@ s_cat(var, serialize(type, obj));                                    \
 s_rep_n(var, so("\n"), so("\n\t"), -1);                              \
 s_cat(var, so("} " #type));                                          \
 
-#define generic_deserialize_obj_ptr_early(val_key) do {                 \
-if(strcmp(name_buf, #val_key) == 0) {                                   \
+#define generic_deserialize_obj_early(obj, val_key, val_name, val_type) do {            \
+if(strcmp(name_buf, #val_name) == 0) {                                   \
     if(strcmp(value_buf, "{") == 0) {                                   \
-        obj->next_ptr = Deserialize_block_to_obj(sc((str->c_str + marcher - 1))); \
+        obj->val_key = *(val_type*)Deserialize_block_to_obj(sc((str->c_str + marcher - 1))); \
         unsigned block_count = 1;                                       \
         while(block_count) {                                            \
         marcher++;                                                      \
         if(str->c_str[marcher] == BLOCK_BEGIN) block_count++;           \
         if(str->c_str[marcher] == BLOCK_END) block_count--;             \
+        used = true;                                                    \
     }                                                                   \
     while(str->c_str[marcher] != '\n') marcher++;                       \
     stage = -1;                                                         \
     }                                                                   \
 }} while(0)
 
-#define generic_deserialize_obj_ptr(val_key) do {                                                      \
-if(strcmp(name_buf, "next_ptr") == 0) {                                                                \
+#define generic_deserialize_obj_ptr_early(obj, val_key, val_name, val_type) do {            \
+if(strcmp(name_buf, #val_name) == 0) {                                   \
+    if(strcmp(value_buf, "{") == 0) {                                   \
+        obj->val_key = (val_type) Deserialize_block_to_obj(sc((str->c_str + marcher - 1))); \
+        unsigned block_count = 1;                                       \
+        while(block_count) {                                            \
+        marcher++;                                                      \
+        if(str->c_str[marcher] == BLOCK_BEGIN) block_count++;           \
+        if(str->c_str[marcher] == BLOCK_END) block_count--;             \
+        used = true;                                                    \
+    }                                                                   \
+    while(str->c_str[marcher] != '\n') marcher++;                       \
+    stage = -1;                                                         \
+    }                                                                   \
+}} while(0)
+
+#define generic_deserialize_obj(obj, val_type, val_key, val_name) do {                                                      \
+if(strcmp(name_buf, #val_name) == 0) {                                                                \
     if(strcmp(value_buf, "nil") == 0) {                                                                \
-        obj->next_ptr = nullptr;                                                                       \
+        obj->val_key = (val_type){};                                                                       \
     } else {                                                                                           \
-        obj->next_ptr = Deserialize(sc(value_buf), Get_deserialization_func(parser_buf));              \
+        obj->val_key = *(val_type*)Deserialize(sc(value_buf), Get_deserialization_func(parser_buf));              \
     }                                                                                                  \
 }} while(0)
 
-#define generic_deserialize_value(val_key, val_type) do { \
-if(strcmp(name_buf, #val_key) == 0) {                     \
-    val_type* ptr = deserialize(val_type, sc(value_buf)); \
-    obj->val_key = *ptr;                                  \
-    free(ptr);                                            \
+#define generic_deserialize_obj_ptr(obj, val_key, val_name) do {                                                      \
+if(strcmp(name_buf, #val_name) == 0) {                                                                \
+    if(strcmp(value_buf, "nil") == 0) {                                                                \
+        obj->val_key = nullptr;                                                                       \
+    } else {                                                                                           \
+        obj->val_key = Deserialize(sc(value_buf), Get_deserialization_func(parser_buf));              \
+    }                                                                                                  \
 }} while(0)
 
-#define str_deserialize_value(val_key) do {           \
-if(strcmp(name_buf, #val_key) == 0) {                 \
+#define generic_deserialize_value(obj, val_key, val_type, val_name) do { \
+if(strcmp(name_buf, #val_name) == 0) {                     \
+    val_type* ptr = Deserialize(sc(value_buf), Get_deserialization_func(parser_buf)); \
+    obj->val_key = *ptr;                                  \
+    free(ptr);                                                           \
+    used = true;                                                                         \
+}} while(0)
+
+#define str_deserialize_value(obj, val_key, val_name) do {      \
+if(strcmp(name_buf, #val_name) == 0) {                 \
     obj->val_key = deserialize(char*, sc(value_buf)); \
 }} while(0)
 
-#define generic_serialize_value(val_key, val_type) do { \
-    s_cat(ret_str, s(#val_key " "));                    \
-    s_cat(ret_str, serialize(val_type, &obj->val_key)); \
-    s_cat(ret_str, s(" " #val_type "\n"));              \
+#define generic_int_ser_val(accessor, val_name, val_type) do { \
+    s_cat(ret_str, s(val_name " "));                           \
+    s_cat(ret_str, serialize(val_type, accessor));             \
+    s_cat(ret_str, s(" " #val_type "\n"));                     \
 } while(0)
 
-#define generic_serialize_value_ptr(val_key, val_type) do { \
-    s_cat(ret_str, s(#val_key " "));                        \
-    s_cat(ret_str, serialize(val_type, obj->val_key));      \
-    s_cat(ret_str, s(" " #val_type "\n"));                  \
+#define generic_serialize_value(obj, val_key, val_type, val_name) generic_int_ser_val(&obj->val_key, val_name, val_type)
+
+#define generic_serialize_value_ptr(obj, val_key, val_type, val_name) generic_int_ser_val(obj->val_key, val_name, val_type)
+
+#define generic_custom_serialize_obj_ptr(obj, val_type, val_name, serializer) do{                \
+    string* data_str = Serialize(obj, serializer); \
+    bool data_exist = true;\
+    if(!data_str) data_exist = false;\
+    if(data_exist && strcmp(data_str->c_str, "nil") == 0) data_exist = false;\
+    \
+    if(!data_exist) {\
+        s_cat(ret_str, so(#val_name " nil "));\
+    } else {\
+        s_cat(ret_str, so(#val_name  " {\n\t"));\
+        ret_str = S_append(S_final(ret_str), S_replace_n(data_str, so("\n"), so("\n\t"), -1));\
+        s_cat(ret_str, so("} "));\
+    }\
+    s_cat(ret_str, S_final(S_append(sc(val_type), so("\n"))));\
 } while(0)
 
-#define generic_serialize_obj_ptr(val_key, val_type, num_fields) do{                \
-    s_cat(ret_str, (obj->val_key) ? so(#val_key " {\n") : so(#val_key " "));        \
-    s_cat(ret_str, (obj->val_key) ? serialize(test_obj, obj->val_key) : so("nil")); \
-    s_rep_n(ret_str, so("\n"), so("\n\t"), num_fields);                             \
-    s_cat(ret_str, (obj->next_ptr) ? so("} test_obj\n") : so(" test_obj\n"));       \
-} while(0)
+#define generic_serialize_obj_ptr(obj, val_type, val_name) generic_custom_serialize_obj_ptr(obj, val_type, val_name, Get_serialization_func(val_type));
 
-#define generic_deserialize_begin()                                     \
-    unsigned len = S_length(str);                                       \
-    unsigned marcher = 0;                                               \
-    unsigned buf_idx = 0;                                               \
-    char buffer[1024];                                                  \
-    char name_buf[128];                                                 \
-    char value_buf[128];                                                \
-    char parser_buf[128];                                               \
-    unsigned stage = 0;                                                 \
-    while(marcher < len) {                                              \
-        if(str->c_str[marcher] != ' ' && str->c_str[marcher] != '\n') { \
-        if(str->c_str[marcher] == '\t') {                               \
-        marcher++;                                                      \
-        continue;                                                       \
-        }                                                               \
-        buffer[buf_idx] = str->c_str[marcher];                          \
-        buf_idx++;                                                      \
-        marcher++;                                                      \
-        continue;                                                       \
-        }                                                               \
-        buffer[buf_idx] = 0;                                            \
-        buf_idx = 0;                                                    \
+#define generic_deserialize_begin(name)                                     \
+    const char* deserializer_name = name;\
+    unsigned len = S_length(str);\
+    unsigned marcher = 0;\
+    unsigned buf_idx = 0;\
+    char buffer[1024];\
+    char name_buf[128];\
+    char value_buf[128];\
+    char parser_buf[128];\
+    unsigned stage = 0;\
+    bool used = false;                                                      \
+    bool hit_non_newline = false;                                                                        \
+    while (marcher < len) {                                                 \
+        if(str->c_str[marcher] == '\n' && !hit_non_newline) {               \
+            marcher++;                                                      \
+            continue; \
+        }                                                                    \
+        if (str->c_str[marcher] != ' ' && str->c_str[marcher] != '\n') {    \
+            hit_non_newline = true;                                                 \
+            if (str->c_str[marcher] == '\t') {\
+                marcher++;\
+                continue;\
+            }\
+            if (buf_idx >= 1024) {\
+                Log_print(LOG_LEVEL_ERROR, "Inevitable buffer overrun detected! You sneaky bugger! Get truncated!");\
+                while(str->c_str[marcher] != ' ' && str->c_str[marcher] != '\n') marcher++;\
+            } else {\
+                buffer[buf_idx] = str->c_str[marcher];\
+                buf_idx++;\
+                marcher++;\
+                continue;\
+            }\
+        }\
+        buffer[buf_idx] = 0;\
+        buf_idx = 0;\
 
 #define generic_deserialize_end() \
+                                 \
     stage++;                      \
     marcher++;                    \
 }
@@ -126,6 +176,10 @@ if(stage == 2) {                             \
     snprintf(parser_buf, 128, "%s", buffer); \
     stage = -1;                              \
     expr                                     \
+    if(!used) {                   \
+        Log_printf(LOG_LEVEL_WARNING, "Key %s not used in object %s, but referenced in file?", name_buf, deserializer_name); \
+        used = false;                                         \
+    }                                        \
 }
 
 
@@ -134,6 +188,8 @@ typedef struct string string;
 void* Deserialize_file_to_obj(FILE* file);
 
 void* Deserialize_block_to_obj(string* str);
+
+void* Deserialize_block_to_specific_obj(string* str, deserialization_func(provided_deserializer));
 
 serialization_func(Get_serialization_func(const char*));
 deserialization_func(Get_deserialization_func(const char*));

@@ -45,6 +45,13 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
 
     app_state_s* state_ptr = malloc(sizeof(app_state_s));
     state_ptr->perf_metrics_ptr = malloc(sizeof(perf_metrics_s));
+    state_ptr->perf_metrics_ptr->fps_arr_len = 32;
+    state_ptr->perf_metrics_ptr->fps_arr_idx = 0;
+    state_ptr->perf_metrics_ptr->previous_fps_arr = malloc(sizeof(float) * state_ptr->perf_metrics_ptr->fps_arr_len);
+
+    for(int i = 0; i < state_ptr->perf_metrics_ptr->fps_arr_len; i++) {
+        state_ptr->perf_metrics_ptr->previous_fps_arr[i] = 1.f;
+    }
 
     struct argument* arg_map = malloc(sizeof(struct argument));
     int arg_idx = 0;
@@ -59,6 +66,8 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     ARG_DEF(arg_map, arg_idx, arg_list_len, "nosplash", 0, false, &no_splash);
 
     load_args(argc, argv, arg_map, arg_idx);
+
+    free(arg_map);
 
     if(!SDL_Init(SDL_INIT_VIDEO)) {
         Log_printf(LOG_LEVEL_FATAL, "Could not init video: %s", SDL_GetError());
@@ -156,6 +165,16 @@ void register_and_run_tests() {
 }
 
 SDL_AppResult SDL_AppIterate(void *application_state) {
+    int current_virtual_memory_footprint;
+    Engine_get_memory(nullptr, nullptr, &current_virtual_memory_footprint, nullptr);
+
+    // if we've allocated over 8 gigs, something's wrong
+    // I'd rather crash than take the system down with a mem leak
+    if(current_virtual_memory_footprint > 8 * 1024 * 1024) {
+        Log_printf(LOG_LEVEL_ERROR, "Memory footprint (%u kB) exceeds 8 GB engine limit! Aborting!", current_virtual_memory_footprint);
+        return SDL_APP_FAILURE;
+    }
+
     if(application_state == nullptr) return SDL_APP_FAILURE;
     app_state_s* state_ptr = (app_state_s*)(application_state);
 
@@ -170,16 +189,31 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
         return SDL_APP_CONTINUE;
     }
     state_ptr->perf_metrics_ptr->time_running += state_ptr->perf_metrics_ptr->dt;
-    state_ptr->perf_metrics_ptr->fps = (1.0f / state_ptr->perf_metrics_ptr->dt);
+    state_ptr->perf_metrics_ptr->previous_fps_arr[state_ptr->perf_metrics_ptr->fps_arr_idx++] = (1.0f / state_ptr->perf_metrics_ptr->dt);
+    state_ptr->perf_metrics_ptr->fps_arr_idx %= state_ptr->perf_metrics_ptr->fps_arr_len;
+
+    state_ptr->perf_metrics_ptr->fps = 0.f;
+    for(register int i = 0; i < state_ptr->perf_metrics_ptr->fps_arr_len; i++) {
+        state_ptr->perf_metrics_ptr->fps += state_ptr->perf_metrics_ptr->previous_fps_arr[i];
+    }
+    state_ptr->perf_metrics_ptr->fps /= (float) state_ptr->perf_metrics_ptr->fps_arr_len;
 
     SDL_SetRenderDrawColor(state_ptr->renderer_ptr, 0, 0, 0, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(state_ptr->renderer_ptr);
 
-    state_ptr->perf_metrics_ptr->time_in_tick = Minf(state_ptr->perf_metrics_ptr->tick_timer / Engine_get_tick_frate(), 1);
+    int err = pthread_mutex_trylock(Engine_get_actor_mutex());
+    while(err == EBUSY) {
+        err = pthread_mutex_trylock(Engine_get_actor_mutex());
+    }
 
-    state_ptr->perf_metrics_ptr->tick_timer += state_ptr->perf_metrics_ptr->dt;
+    if(err == 0) {
+        state_ptr->perf_metrics_ptr->time_in_tick = Minf(
+                state_ptr->perf_metrics_ptr->tick_timer / Engine_get_tick_frate(), 1);
+        state_ptr->perf_metrics_ptr->tick_timer += state_ptr->perf_metrics_ptr->dt;
+        R_render_scene(state_ptr, state_ptr->scene);
+        pthread_mutex_unlock(Engine_get_actor_mutex());
+    }
 
-    R_render_scene(state_ptr, state_ptr->scene);
 
     SDL_RenderPresent(state_ptr->renderer_ptr);
 
@@ -188,7 +222,6 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
 
     // Loop through every thread, if they're all stopped, we return SDL_APP_SUCCESS and quit, otherwise we return SDL_APP_CONTINUE and iterate again.
     do {
-
         switch (cur_info->status) {
             case THREAD_STOPPED: // If this thread is stopped, do nothing and break, moving to the next thread
                 break;
@@ -197,7 +230,6 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
             default: // Intentionally fall through from the THREAD_STOPPING case here, and in all unhandled cases, return SDL_APP_CONTINUE
                 return SDL_APP_CONTINUE;
         }
-
         cur_info = cur_info->next;
     } while (cur_info);
 
@@ -206,11 +238,7 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
 
 SDL_AppResult SDL_AppEvent(void *application_state, SDL_Event *event) {
     app_state_s* state_ptr = (app_state_s*)(application_state);
-//    auto* state_ptr = static_cast<struct app_state_s*>(app_state_s);
-//    SDL_AppResult res = state_ptr->game_ptr->event(state_ptr, event);
-//    if(res != SDL_APP_CONTINUE) return res;
-//    gui::event(event);
-//    state_ptr->input_manager_ptr->event(state_ptr, event);
+
     thread_info_s* threads = Engine_get_threads();
     thread_info_s* cur_info = threads;
     switch (event->type) {
@@ -222,6 +250,7 @@ SDL_AppResult SDL_AppEvent(void *application_state, SDL_Event *event) {
             break;
     }
     Engine_event(state_ptr, event);
+
     return SDL_APP_CONTINUE;
 }
 

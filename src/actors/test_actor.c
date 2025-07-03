@@ -60,3 +60,11 @@ void debug_actor_render(actor_s* self, app_state_s* state_ptr) {
 }
 
 void debug_actor_event(actor_s* self, app_state_s* state_ptr, SDL_Event* event) {}
+
+string* debug_actor_serialize(void* serialized_obj) {
+    return so("nil");
+}
+
+void* debug_actor_deserialize(string* str) {
+    return nullptr;
+}

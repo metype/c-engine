@@ -2,6 +2,7 @@
 #define CPROJ_ENGINE_H
 
 #include <pthread.h>
+#include <stdio.h>
 #include "SDL3/SDL_events.h"
 
 struct actor;
@@ -13,6 +14,11 @@ enum THREAD_STATUS {
     THREAD_STOPPED,
     THREAD_STOP_REQUESTED,
     THREAD_PAUSED,
+};
+
+enum USER_EVENT_TYPE {
+    USER_EVENT_THREAD_STOPPED,
+    USER_EVENT_THREAD_STOPPING,
 };
 
 typedef struct thread_info_s {
@@ -49,5 +55,7 @@ thread_info_s* Engine_get_threads();
 struct actor_s* Engine_get_actors();
 
 int Engine_set_real_tickrate(int tickrate_pref);
+
+void Engine_get_memory(int* currRealMem, int* peakRealMem, int* currVirtMem, int* peakVirtMem);
 
 #endif //CPROJ_ENGINE_H

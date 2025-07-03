@@ -5,7 +5,7 @@
 
 #define assert(cond, msg, handle) assert_err(cond, msg, "", handle)
 
-#if DEBUG == 1
+#if CENGINE_DEBUG == 1
 #if CENGINE_LINUX
     #define assert_err(cond, msg, err_str, handle) do{                                                                                                              \
         if( !(cond) ) {                                                                                                                                     \

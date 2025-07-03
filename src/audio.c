@@ -19,7 +19,11 @@ pthread_mutex_t audio_mutex;
 pthread_mutexattr_t audio_mutex_attr;
 
 void Audio_init() {
+
+    pthread_mutexattr_init(&audio_mutex_attr);
+    pthread_mutexattr_settype(&audio_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&audio_mutex, &audio_mutex_attr);
+
     mutex_locked_code(&audio_mutex, {
         bool success = SDL_Init(SDL_INIT_AUDIO);
         if (!success) {
@@ -74,13 +78,14 @@ void Audio_init() {
         channel_info = malloc(sizeof(channel_data_s) * NUM_CHANNELS);
         last_played_on_each_channel = malloc(sizeof(char *) * NUM_CHANNELS);
 
+        has_audio_not_initialized = false;
+
         for (int i = 0; i < NUM_CHANNELS; i++) {
             channel_info[i].flags = 0;
             last_played_on_each_channel[i] = malloc(sizeof(char) * 64);
             Audio_set_channel_volume(i, 100);
         }
 
-        has_audio_not_initialized = false;
     });
 }
 

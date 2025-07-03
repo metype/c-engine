@@ -75,6 +75,63 @@ void* Deserialize_file_to_obj(FILE* file) {
     return Deserialize_block_to_obj(file_data);
 }
 
+void* Deserialize_block_to_specific_obj(string* str, deserialization_func(provided_deserializer)) {
+    int block_begin = -1;
+    unsigned block_end = 0;
+    unsigned block_count = 0;
+
+    for(int i = 0; i < S_length(str); i++ ) {
+        if (str->c_str[i] == BLOCK_BEGIN) {
+            block_count++;
+            if (block_begin < 0) block_begin = i + 2;
+        }
+        if (str->c_str[i] == BLOCK_END) {
+            block_count--;
+            if (block_count == 0) {
+                block_end = i;
+                break;
+            }
+        }
+    }
+
+    if(block_count != 0) {
+        Log_printf(LOG_LEVEL_ERROR, "Failed to parse block! Block not closed! Raw Block Data: \"%s\"", str->c_str);
+        return nullptr;
+    }
+
+    char type_buf[64];
+    unsigned idx = block_end + 2;
+    unsigned buf_idx = 0;
+    while(1) {
+        if(buf_idx >= 64) {
+            Log_print(LOG_LEVEL_ERROR, "Failed to parse! Type specifier exceeded length limit!");
+            return nullptr;
+        }
+        if(str->c_str[idx] == ' ' || str->c_str[idx] == '\n' || str->c_str[idx] == 0) break;
+        type_buf[buf_idx++] = str->c_str[idx++];
+    }
+    type_buf[buf_idx] = 0;
+
+    deserialization_func(deserializer) = Get_deserialization_func(type_buf);
+    if(provided_deserializer) deserializer = provided_deserializer;
+
+    if(!deserializer) {
+        Log_print(LOG_LEVEL_ERROR, "Failed to parse! Type specifier does not have properly registered funcs!");
+        return nullptr;
+    }
+
+    char* block_buf = malloc(sizeof(char) * (block_end - block_begin + 2));
+
+    idx = 0;
+    for(int i = block_begin; i < block_end; i++) {
+        block_buf[idx++] = str->c_str[i];
+    }
+    block_buf[idx] = 0;
+
+    string* block_str_data = sc(block_buf);
+    return Deserialize(block_str_data, deserializer);
+}
+
 void* Deserialize_block_to_obj(string* str) {
     int block_begin = -1;
     unsigned block_end = 0;
@@ -119,16 +176,7 @@ void* Deserialize_block_to_obj(string* str) {
         return nullptr;
     }
 
-    char* block_buf = malloc(sizeof(char) * (block_end - block_begin + 2));
-
-    idx = 0;
-    for(int i = block_begin; i < block_end; i++) {
-        block_buf[idx++] = str->c_str[i];
-    }
-    block_buf[idx] = 0;
-
-    string* block_str_data = sc(block_buf);
-    return Deserialize(block_str_data, deserializer);
+    return Deserialize_block_to_specific_obj(str, deserializer);
 }
 
 string* Serialize(void* obj, serialization_func(serializer)) {

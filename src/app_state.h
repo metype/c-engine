@@ -13,6 +13,9 @@ typedef struct perf_metrics {
     float dt;
     double time_running;
     float fps;
+    float* previous_fps_arr;
+    int fps_arr_idx;
+    int fps_arr_len;
     int display_dt;
     int max_fps;
     float time_in_tick;

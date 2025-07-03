@@ -140,7 +140,9 @@ void FS_create_dir_if_not_exist(const char* name) {
 
 file_s FS_open(const char* path, file_access_flags_e access_flags) {
     file_s f;
-    FILE* file = fopen_mkdir(path, convert_fa_flags_to_fopen(access_flags));
+    char* mode = convert_fa_flags_to_fopen(access_flags);
+    FILE* file = fopen_mkdir(path, mode);
+    free(mode);
     f.f_ptr = file;
     f.file_name = strdup(path);
     char* parent_dir = strdup(path);

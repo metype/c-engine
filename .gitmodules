@@ -10,3 +10,9 @@
 [submodule "pthread-win32"]
 	path = pthread-win32
 	url = https://github.com/GerHobbelt/pthread-win32
+[submodule "luajit-cmake"]
+	path = luajit-cmake
+	url = https://github.com/zhaozg/luajit-cmake
+[submodule "luajit"]
+	path = luajit
+	url = https://luajit.org/git/luajit.git

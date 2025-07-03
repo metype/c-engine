@@ -1,10 +1,7 @@
-#include <malloc.h>
 #include <stdlib.h>
 #include <time.h>
 #include "tilemap_actor.h"
-#include "../log.h"
 #include "../util.h"
-#include "../audio.h"
 
 void tilemap_actor_init(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_INIT(self, tilemap_actor_data_s);
@@ -39,6 +36,7 @@ void tilemap_actor_think(actor_s* self, app_state_s* state_ptr) {
 
 void tilemap_actor_render(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_RENDER(self, tilemap_actor_data_s);
+
     transform_s tr = Actor_get_transform_lerp(self, state_ptr->perf_metrics_ptr->time_in_tick);
 
     const int xScreenMin = 0;
@@ -49,8 +47,8 @@ void tilemap_actor_render(actor_s* self, app_state_s* state_ptr) {
     float width = 16.f * tr.scale.x;
     float height = 16.f * tr.scale.y;
 
-    /* If the tl of the tilemap is past the tl of the screen in either axis, cut off the first
-     * rows/columns that are behind the tl.
+    /* If the top left (tl) of the tilemap is past the tl of the screen in
+     * either axis, cut off the first rows/columns that are behind the tl.
      *
      * Speeds up the loops a bit, and requires less math be done and such and such
      *
@@ -114,25 +112,17 @@ void tilemap_actor_render(actor_s* self, app_state_s* state_ptr) {
 
 void tilemap_actor_event(actor_s* self, app_state_s* state_ptr, SDL_Event* event) {
     ACTOR_PRE_EVENT(self, tilemap_actor_data_s);
-    struct mapping{ bool* val; SDL_Scancode code; } mappings[] = {
-            {.val = &data->up, .code = SDL_SCANCODE_S},
-            {.val = &data->down, .code = SDL_SCANCODE_W},
-            {.val = &data->left, .code = SDL_SCANCODE_D},
-            {.val = &data->right, .code = SDL_SCANCODE_A}
-    };
     switch(event->type) {
-        case SDL_EVENT_KEY_DOWN:
-            for(int i = 0; i < 4; i++) {
-                if(event->key.scancode == mappings[i].code) *mappings[i].val = true;
-            }
-            break;
-        case SDL_EVENT_KEY_UP:
-            for(int i = 0; i < 4; i++) {
-                if(event->key.scancode == mappings[i].code) *mappings[i].val = false;
-            }
-            break;
         case SDL_EVENT_WINDOW_RESIZED:
             SDL_GetWindowSize(state_ptr->window_ptr, &data->sWidth, &data->sHeight);
             break;
     }
+}
+
+string* tilemap_actor_serialize(void* serialized_obj) {
+    return so("nil");
+}
+
+void* tilemap_actor_deserialize(string* str) {
+    return nullptr;
 }

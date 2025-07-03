@@ -75,21 +75,23 @@ string* S_replace_n(const string* str_1, const string* str_search, const string*
     unsigned idx = 0;
     unsigned str_idx = 0;
 
-    for(unsigned i = 0; i <= input_len - search_len; i++) {
+    for(unsigned i = 0; i <= input_len; i++) {
         bool match = true;
-        for(unsigned j = 0; j < search_len; j++) {
-            if(str_1->c_str[i + j] != str_search->c_str[j]) {
-                match = false;
-                break;
+        if(i < input_len - search_len) {
+            for (register unsigned j = 0; j < search_len; ++j) {
+                if (str_1->c_str[i + j] != str_search->c_str[j]) {
+                    match = false;
+                    break;
+                }
             }
-        }
-        if(match && replacement_count < max_replacements) {
-            for(unsigned j = 0; j < replace_len; j++) {
-                new_str[idx++] = str_replace->c_str[j];
+            if (match && replacement_count < max_replacements) {
+                for (register unsigned j = 0; j < replace_len; ++j) {
+                    new_str[idx++] = str_replace->c_str[j];
+                }
+                str_idx += search_len;
+                replacement_count++;
+                continue;
             }
-            str_idx += search_len;
-            replacement_count++;
-            continue;
         }
         new_str[idx++] = str_1->c_str[str_idx++];
     }

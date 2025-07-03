@@ -3,7 +3,7 @@
 
 #include <stddef.h>
 
-#define list_add(list, elm) do { \
+#define list_add(list, elm, ret) do { \
     if(!list) {                  \
         list = malloc(sizeof(list_s));                            \
     }\
@@ -13,8 +13,8 @@
     }                                                                                  \
     if(list->element_count >= list->array_size) {                                        \
         list->array_size *= 2;                                                          \
-        void* new_arr = realloc(list->array, list->element_type_size * list->array_size); \
-        assert(!new_arr, "realloc failed, out of memory.", return);                    \
+        void* new_arr = realloc(list->array, list->element_type_size * list->element_type_size); \
+        assert(new_arr, "realloc failed, out of memory.", ret);                    \
         list->array = new_arr;                                                          \
     }                                                                                  \
     list->array[list->element_count++] = elm;                                            \

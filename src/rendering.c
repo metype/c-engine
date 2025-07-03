@@ -7,12 +7,14 @@
 
 #include "definitions.h"
 #include "engine.h"
+#include "scene.h"
 
 #if CENGINE_LINUX
 #include <malloc.h>
 #include <stdlib.h>
 #include <time.h>
 #include "errors.h"
+#include "viewport.h"
 
 #elif CENGINE_WIN32
 #include "win32_stdlib.h"
@@ -117,9 +119,10 @@ scene* R_init_scene(SDL_Renderer* renderer) {
     return new_scene;
 }
 
-void R_render_scene(app_state_s* state_ptr, scene* scene_to_render) {
+void R_render_scene(app_state_s* state_ptr, volatile scene* scene_to_render) {
+    Viewport_use(state_ptr->renderer_ptr, scene_to_render->base_vp);
+    SDL_RenderClear(state_ptr->renderer_ptr);
     assert(scene_to_render->actor_tree != nullptr, "Tried to render null scene!", return);
-    mutex_locked_code(Engine_get_actor_mutex(), {
-        Actor_render(scene_to_render->actor_tree, state_ptr);
-    });
+    Actor_render((actor_s*) scene_to_render->actor_tree, state_ptr);
+    SDL_SetRenderTarget(state_ptr->renderer_ptr, nullptr);
 }
