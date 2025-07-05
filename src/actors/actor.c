@@ -9,9 +9,9 @@
 #include <malloc.h>
 #include "script.h"
 #include "../structures/stack.h"
-#include "../string.h"
 #include "lua_script.h"
 #include "viewport_actor.h"
+#include "editor_actor.h"
 
 #if CENGINE_WIN32
 #include "../win32_stdlib.h"
@@ -21,6 +21,8 @@ void empty_init(actor_s* actor, app_state_s* state_ptr) {}
 void empty_think(actor_s* actor, app_state_s* state_ptr) {}
 void empty_render(actor_s* actor, app_state_s* state_ptr) {}
 void empty_event(actor_s* actor, app_state_s* state_ptr, SDL_Event* event) {}
+void empty_recalc_bb(actor_s* actor) {actor->bb = malloc(sizeof(rect)); *actor->bb = (rect) {.tl = {.x = 0, .y = 0}, .br = {.x = 0, .y = 0}}; }
+
 string* empty_serialize(void* serialized_obj) { return so("nil"); }
 void* empty_deserialize(string* str) { return nullptr; }
 
@@ -30,7 +32,7 @@ hash_map_s* registered_actor_serialization_types = nullptr;
 hash_map_s* registered_actor_deserialization_types = nullptr;
 
 void Actor_tick(actor_s* actor, struct app_state* state_ptr) { // NOLINT(*-no-recursion)
-    if(actor == nullptr) return;
+    if(!actor) return;
 
     if(actor->ticks_since_spawn == 0) {
         // Do the check once and then assume from here out, these values do not change
@@ -46,11 +48,17 @@ void Actor_tick(actor_s* actor, struct app_state* state_ptr) { // NOLINT(*-no-re
         if(actor->script) actor->script->init_func(actor->script, actor);
     }
 
-    actor->thinker(actor, state_ptr);
-    if(actor->script) actor->script->think_func(actor->script, actor, state_ptr);
+    if(actor->process) {
+        actor->thinker(actor, state_ptr);
+        if(actor->script) actor->script->think_func(actor->script, actor, state_ptr);
+    }
 
     for(register int i = 0; i < actor->children->element_count; i++) {
-        Actor_tick(actor->children->array[i], state_ptr);
+        actor_s* child = (actor_s*)actor->children->array[i];
+        if(child->process && !actor->process) {
+            child->process = false;
+        }
+        Actor_tick(child, state_ptr);
     }
 
     actor->ticks_since_spawn++;
@@ -136,6 +144,7 @@ actor_s* Actor_create(transform_s transform, actor_def_s* actor_definition) {
     new_actor->actor_id = strdup(actor_definition->actor_id);
     new_actor->ticks_since_spawn = 0;
     new_actor->visible = true;
+    new_actor->process = true;
 
     new_actor->parent = nullptr;
     new_actor->children = list_new(sizeof(actor_s*));
@@ -145,7 +154,9 @@ actor_s* Actor_create(transform_s transform, actor_def_s* actor_definition) {
     new_actor->render = actor_definition->render;
     new_actor->late_render = actor_definition->late_render;
     new_actor->event = actor_definition->event;
+    new_actor->recalc_bb = actor_definition->recalc_bb;
 
+    new_actor->bb = nullptr;
     new_actor->transform = transform;
 
     new_actor->handle = Stack_push(actor_stack, new_actor);
@@ -181,7 +192,13 @@ actor_def_s* Actor_get_def(char* actor_id) {
     return def;
 }
 
-void Actor_register_def(char* actor_id, actor_init(actor_init), actor_thinker(actor_think), actor_render(actor_render), actor_render(actor_late_render), actor_event(actor_event)) {
+void Actor_register_def(char* actor_id,
+                        actor_init(actor_init),
+                        actor_thinker(actor_think),
+                        actor_render(actor_render),
+                        actor_render(actor_late_render),
+                        actor_event(actor_event),
+                        actor_recalc_bb(actor_recalc_bb)) {
     if(!actor_id) return;
 
     if(!actor_init) actor_init = &empty_init;
@@ -190,11 +207,14 @@ void Actor_register_def(char* actor_id, actor_init(actor_init), actor_thinker(ac
     if(!actor_event) actor_event = &empty_event;
 
     actor_def_s* actor_def = malloc(sizeof(actor_def_s));
+
     actor_def->thinker = actor_think;
     actor_def->init = actor_init;
     actor_def->render = actor_render;
     actor_def->late_render = actor_late_render;
     actor_def->event = actor_event;
+    actor_def->recalc_bb = actor_recalc_bb;
+
     actor_def->actor_id = strdup(actor_id);
 
     mutex_locked_code(&actor_mutex, {
@@ -213,10 +233,11 @@ void Actor_register_default_defs() {
     pthread_mutexattr_settype(&actor_mutex_attr, PTHREAD_MUTEX_RECURSIVE);
     pthread_mutex_init(&actor_mutex, &actor_mutex_attr);
 
-    Actor_register_def("test_actor", &debug_actor_init, &debug_actor_think, &debug_actor_render, &empty_render, &debug_actor_event);
-    Actor_register_def("tilemap", &tilemap_actor_init, &tilemap_actor_think, &tilemap_actor_render, &empty_render, &tilemap_actor_event);
-    Actor_register_def("viewport", &viewport_actor_init, &viewport_actor_think, &viewport_actor_render, &viewport_actor_late_render, &viewport_actor_event);
-    Actor_register_def("actor", &empty_init, &empty_think, &empty_render, &empty_render, &empty_event);
+    Actor_register_def("test_actor", &debug_actor_init, &debug_actor_think, &debug_actor_render, &empty_render, &debug_actor_event, &debug_actor_recalc_bb);
+    Actor_register_def("tilemap", &tilemap_actor_init, &tilemap_actor_think, &tilemap_actor_render, &empty_render, &tilemap_actor_event, &tilemap_actor_recalc_bb);
+    Actor_register_def("viewport", &viewport_actor_init, &viewport_actor_think, &viewport_actor_render, &viewport_actor_late_render, &viewport_actor_event, &viewport_actor_recalc_bb);
+    Actor_register_def("actor", &empty_init, &empty_think, &empty_render, &empty_render, &empty_event, &empty_recalc_bb);
+    Actor_register_def("editor", &editor_actor_init, &editor_actor_think, &editor_actor_render, &editor_actor_late_render, &editor_actor_event, &editor_actor_recalc_bb);
 
     Actor_register_serialization_func("test_actor", &debug_actor_serialize);
     Actor_register_deserialization_func("test_actor", &debug_actor_deserialize);
@@ -229,6 +250,9 @@ void Actor_register_default_defs() {
 
     Actor_register_serialization_func("actor", &empty_serialize);
     Actor_register_deserialization_func("actor", &empty_deserialize);
+
+    Actor_register_serialization_func("editor", &editor_actor_serialize);
+    Actor_register_deserialization_func("editor", &editor_actor_deserialize);
 }
 
 transform_s Actor_get_transform(actor_s* actor) {
@@ -313,6 +337,13 @@ transform_s Actor_get_local_transform_lerp(actor_s* actor, float time_in_tick) {
     };
 }
 
+rect Actor_get_bounding_box(actor_s* actor) {
+    if(!actor) return RECT_DEFAULT;
+    if(!actor->bb) actor->recalc_bb(actor);
+    if(!actor->bb) return RECT_DEFAULT;
+    return *actor->bb;
+}
+
 string* Actor_serialize(void* serialized_obj) { // NOLINT(*-no-recursion)
     if(!serialized_obj) return s("nil");
     actor_s* actor = serialized_obj;
@@ -323,6 +354,7 @@ string* Actor_serialize(void* serialized_obj) { // NOLINT(*-no-recursion)
     s_cat(ret_str, so("} transform\n"));
 
     generic_serialize_value(actor, visible, bool, "visible");
+    generic_serialize_value(actor, process, bool, "process");
     generic_serialize_value_ptr(actor, actor_id, char*, "id");
 
     generic_custom_serialize_obj_ptr(actor->data, actor->actor_id, data, Actor_get_serialization_func(actor->actor_id));
@@ -359,6 +391,7 @@ void* Actor_deserialize(string* str) {
     actor->children = list_new(sizeof(actor_s*));
     actor->ticks_since_spawn = 0;
     actor->visible = true;
+    actor->process = true;
     actor->parent = nullptr;
     actor->script = nullptr;
 
@@ -429,6 +462,12 @@ void* Actor_deserialize(string* str) {
                 free(ptr);
                 used = true;
             }
+            if (strcmp(name_buf, "process") == 0) {
+                bool *ptr = Deserialize(S_convert(value_buf), Get_deserialization_func(parser_buf));
+                actor->process = *ptr;
+                free(ptr);
+                used = true;
+            }
             if (strcmp(name_buf, "script_path") == 0) {
                 char *path = Deserialize(S_convert(value_buf), Get_deserialization_func("char*"));
                 actor->script = Lua_script_load(path);
@@ -444,6 +483,7 @@ void* Actor_deserialize(string* str) {
     actor->late_render = def->late_render;
     actor->thinker = def->thinker;
     actor->init = def->init;
+    actor->recalc_bb = def->recalc_bb;
 
     actor->handle = Stack_push(actor_stack, actor);
 

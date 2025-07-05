@@ -8,6 +8,7 @@
 #include "actor.h"
 #include "lj_state.h"
 #include "../structures/stack.h"
+#include "../gui.h"
 
 enum custom_lua_event_code {
     CUSTOM_EVENT_UNKNOWN = 0,
@@ -104,11 +105,13 @@ script* Lua_script_load(const char* script_path) {
 
     return nullptr;
 }
+
 #define custom_event_add(event) lua_pushinteger(Lscript->state, CONCAT(CUSTOM_,event)); lua_setglobal(Lscript->state, #event);
 #define cfunc_add(func_ptr, name) lua_pushcfunction(Lscript->state, func_ptr); lua_setglobal(Lscript->state, name);
 
 void Lua_script_setup(script* script) {
     lua_script* Lscript = script->script_ptr;
+    if(Lscript->finished_setup) return;
 
     // Overwrite print()
     cfunc_add(&Lua_print, "print");
@@ -118,6 +121,9 @@ void Lua_script_setup(script* script) {
     cfunc_add(&Lua_get_actor_handle_from_path, "GetActorHandle");
     cfunc_add(&Lua_get_actor_from_path, "GetActor");
     cfunc_add(&Lua_get_actor_path, "GetActorPath");
+
+    // Add gui functions
+    cfunc_add(&Lua_gui_button, "GuiButton");
 
     custom_event_add(EVENT_UNKNOWN);
     custom_event_add(EVENT_KEY);
@@ -170,6 +176,46 @@ int Lua_get_actor_path(lua_State* state) {
     }
 
     lua_pushstring(state, final_path);
+    return 1;
+}
+
+int Lua_gui_button(lua_State* state) {
+    int x;
+    int y;
+    int width;
+    int height;
+    const char* text;
+
+    if(!lua_isstring(state, -3)) {
+        lua_args_start(5);
+            test_lua_arg(0, number);
+            test_lua_arg(1, number);
+            test_lua_arg(2, number);
+            test_lua_arg(3, number);
+            test_lua_arg(4, string);
+
+            def_lua_arg(x, 0, integer);
+            def_lua_arg(y, 1, integer);
+            def_lua_arg(width, 2, integer);
+            def_lua_arg(height, 3, integer);
+            def_lua_arg(text, 4, string);
+        lua_args_end();
+    } else {
+        lua_args_start(3);
+            test_lua_arg(0, number);
+            test_lua_arg(1, number);
+            test_lua_arg(2, string);
+
+            def_lua_arg(x, 0, integer);
+            def_lua_arg(y, 1, integer);
+            def_lua_arg(text, 2, string);
+            width = -1;
+            height = -1;
+        lua_args_end();
+    }
+
+    bool pressed = Gui_button(x, y, width, height, text);
+    lua_pushboolean(state, pressed);
     return 1;
 }
 

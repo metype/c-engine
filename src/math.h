@@ -14,6 +14,21 @@ typedef struct float3_s {
     float z;
 } float3_s;
 
+typedef struct rect {
+    float2_s tl;
+    float2_s br;
+} rect;
+
+typedef struct tri {
+    float2_s a;
+    float2_s b;
+    float2_s c;
+    float2_s velocity;
+    rect bb;
+} tri;
+
+#define RECT_DEFAULT (rect) {.tl = {.x = 0, .y = 0}, .br = {.x = 0, .y = 0}}
+
 // Not inlining random functions cause honestly if you want speed you aren't calling random often ;3
 int i_rand(int max);
 int i_rand_d(int min, int max);

@@ -2,14 +2,13 @@
 #include <time.h>
 #include "tilemap_actor.h"
 #include "../util.h"
+#include "../log.h"
+#include "../viewport.h"
 
 void tilemap_actor_init(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_INIT(self, tilemap_actor_data_s);
 
     srandom(time(NULL));
-
-    data->tilemap_width = 200;
-    data->tilemap_height = 200;
 
     data->tilemap = malloc(sizeof(long) * data->tilemap_width);
 
@@ -37,7 +36,11 @@ void tilemap_actor_think(actor_s* self, app_state_s* state_ptr) {
 void tilemap_actor_render(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_RENDER(self, tilemap_actor_data_s);
 
+    if(!data->tilemap) return;
+
     transform_s tr = Actor_get_transform_lerp(self, state_ptr->perf_metrics_ptr->time_in_tick);
+
+    Viewport_get_active_size(&data->sWidth, &data->sHeight);
 
     const int xScreenMin = 0;
     const int yScreenMin = 0;
@@ -119,10 +122,50 @@ void tilemap_actor_event(actor_s* self, app_state_s* state_ptr, SDL_Event* event
     }
 }
 
+void tilemap_actor_recalc_bb(actor_s* self) {
+    ACTOR_DATA_PTR(self, tilemap_actor_data_s);
+
+    transform_s tr = Actor_get_transform(self);
+
+    if(self->bb) free(self->bb);
+    self->bb = malloc(sizeof(rect));
+
+    float width = data->tilemap_width * 16 * tr.scale.x;
+    float height = data->tilemap_height * 16 * tr.scale.y;
+
+    self->bb->tl = (float2_s) {.x = self->transform.position.x, .y = self->transform.position.y};
+    self->bb->br = (float2_s) {.x = self->bb->tl.x + width, .y = self->bb->tl.y + height};
+}
+
 string* tilemap_actor_serialize(void* serialized_obj) {
-    return so("nil");
+    if(!serialized_obj) return s("nil");
+    tilemap_actor_data_s* data = serialized_obj;
+    string* ret_str = s("");
+
+    generic_serialize_value(data, tilemap_width, int, "width");
+    generic_serialize_value(data, tilemap_height, int, "height");
+
+    return ret_str;
 }
 
 void* tilemap_actor_deserialize(string* str) {
-    return nullptr;
+    if(!str) return nullptr;
+    if(!str->c_str) return nullptr;
+
+    tilemap_actor_data_s* data = malloc(sizeof(tilemap_actor_data_s));
+    data->tilemap_height = 0;
+    data->tilemap_width = 0;
+
+    generic_deserialize_begin("tilemap")
+        deserialize_stage_0()
+
+        deserialize_stage_1();
+
+        deserialize_stage_2({
+            generic_deserialize_value(data, tilemap_width, int, width);
+            generic_deserialize_value(data, tilemap_height, int, height);
+        });
+    generic_deserialize_end()
+
+    return data;
 }

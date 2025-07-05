@@ -13,6 +13,7 @@
 #include "actors/lua_script.h"
 #include "filesystem.h"
 #include "viewport.h"
+#include "actors/editor_actor.h"
 
 #if defined(__linux__)
 #include <sys/time.h>
@@ -58,23 +59,38 @@ void *Engine_tick(void *arg)
     actor_mutex_initialized = true;
     Engine_start_thread();
     bool quit = false;
-    mutex_locked_code(&actor_list_mutex, {
+    mutex_locked_code(&actor_list_mutex,
+    {
         string* working_dir = sc(FS_get_working_dir());
         s_cat(working_dir, so("/saves"));
         FS_create_dir_if_not_exist(working_dir->c_str);
         s_cat(working_dir, so("/main.scene"));
 
         FILE* scene_file = fopen(working_dir->c_str, "r");
-        scene* scene = Deserialize_file_to_obj(scene_file);
-
-        Scene_save(scene, "test1");
-
-        state_ptr->scene = scene;
-        actor_list = (actor_s*) scene->actor_tree;
+        scene* edited_scene = Deserialize_file_to_obj(scene_file);
 
         ref_dec(&working_dir->refcount);
-    });
 
+        scene* scene = malloc(sizeof(struct scene));
+        scene->actor_tree = Actor_create_s(TRANSFORM_DEFAULT, "editor");
+
+        scene->actor_tree->script = Lua_script_load("/home/emily/CLionProjects/CProj/cmake-build-debug/script/editor/editor.lua");
+        Lua_script_setup(scene->actor_tree->script);
+
+        state_ptr->scene = scene;
+
+        state_ptr->scene->base_vp = malloc(sizeof(viewport));
+        state_ptr->scene->base_vp->type = VIEWPORT_NO_SCALE;
+        state_ptr->scene->base_vp->width = 1920;
+        state_ptr->scene->base_vp->height = 1080;
+        state_ptr->scene->base_vp->x = 0;
+        state_ptr->scene->base_vp->y = 0;
+        state_ptr->scene->base_vp->texture = nullptr;
+
+        state_ptr->scene->actor_tree->data = malloc(sizeof(editor_actor_data_s));
+        ((editor_actor_data_s*) state_ptr->scene->actor_tree->data)->edited_scene = edited_scene;
+        actor_list = (actor_s*) state_ptr->scene->actor_tree;
+    });
 
     thread_info_s* this_thread = Engine_get_thread_info(pthread_self());
 
@@ -95,6 +111,11 @@ void *Engine_tick(void *arg)
         mutex_locked_code(&actor_list_mutex, {
             Actor_update_transforms(actor_list);
             Actor_tick(actor_list, state_ptr);
+
+//            // arbitrary bs
+//            if(actor_list->ticks_since_spawn == 13) {
+//                Scene_save(state_ptr->scene, "test1");
+//            }
 
             if(aerr == 0) {
                 state_ptr->perf_metrics_ptr->tick_timer = 0;

@@ -20,6 +20,7 @@ typedef enum screen_layer {
 } screen_layer;
 
 typedef struct SDL_Renderer SDL_Renderer;
+typedef struct SDL_FRect SDL_FRect;
 struct app_state;
 
 typedef struct scene scene;

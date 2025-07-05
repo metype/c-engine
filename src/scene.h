@@ -4,21 +4,6 @@
 #include "string.h"
 #include "math.h"
 
-
-
-typedef struct rect {
-    float2_s tl;
-    float2_s br;
-} rect;
-
-typedef struct tri {
-    float2_s a;
-    float2_s b;
-    float2_s c;
-    float2_s velocity;
-    rect bb;
-} tri;
-
 typedef struct actor_s actor_s;
 typedef struct viewport_s viewport;
 
@@ -29,6 +14,7 @@ typedef struct scene {
 //    uint32_t* pixels;
     volatile actor_s* actor_tree;
     viewport* base_vp;
+    actor_s** highlights;
 } scene;
 
 string* Scene_serialize(void* serialized_obj);

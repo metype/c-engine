@@ -8,8 +8,6 @@
 
 void viewport_actor_init(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_INIT(self, viewport_actor_data_s);
-
-    data->previous_vp = nullptr;
 }
 
 void viewport_actor_think(actor_s* self, app_state_s* state_ptr) {
@@ -18,17 +16,54 @@ void viewport_actor_think(actor_s* self, app_state_s* state_ptr) {
 
 void viewport_actor_render(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_RENDER(self, viewport_actor_data_s);
-    data->previous_vp = Viewport_active();
-    Viewport_use(state_ptr->renderer_ptr, data->vp);
+    if(!data->vp) return;
+
+    transform_s tr = Actor_get_transform(self);
+
+    data->x = data->vp->x;
+    data->y = data->vp->y;
+    data->w = data->vp->width;
+    data->h = data->vp->height;
+
+    data->vp->x = tr.position.x;
+    data->vp->y = tr.position.y;
+    data->vp->width *= tr.scale.x;
+    data->vp->height *= tr.scale.y;
+
+    if((!data->vp->texture) || data->vp->width != data->vp->texture->w || data->vp->height != data->vp->texture->h) Viewport_init(state_ptr->renderer_ptr, data->vp);
+
+    Viewport_use(data->vp);
 }
 
 void viewport_actor_late_render(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_RENDER(self, viewport_actor_data_s);
-    Viewport_use(state_ptr->renderer_ptr, data->previous_vp);
+    if(!data->vp) return;
+
+    Viewport_finish();
+
+    data->vp->x = data->x;
+    data->vp->y = data->y;
+    data->vp->width = data->w;
+    data->vp->height = data->h;
 }
 
 void viewport_actor_event(actor_s* self, app_state_s* state_ptr, SDL_Event* event) {
 
+}
+
+void viewport_actor_recalc_bb(actor_s* self) {
+    ACTOR_DATA_PTR(self, viewport_actor_data_s);
+
+    transform_s tr = Actor_get_transform(self);
+
+    if(self->bb) free(self->bb);
+    self->bb = malloc(sizeof(rect));
+
+    float width = data->vp->width * tr.scale.x;
+    float height = data->vp->height * tr.scale.y;
+
+    self->bb->tl = (float2_s) {.x = self->transform.position.x, .y = self->transform.position.y};
+    self->bb->br = (float2_s) {.x = self->bb->tl.x + width, .y = self->bb->tl.y + height};
 }
 
 string* viewport_actor_serialize(void* serialized_obj) {

@@ -15,6 +15,7 @@
 #include <time.h>
 #include "errors.h"
 #include "viewport.h"
+#include "gui.h"
 
 #elif CENGINE_WIN32
 #include "win32_stdlib.h"
@@ -80,49 +81,20 @@ scene* R_init_scene(SDL_Renderer* renderer) {
     }
     srandom(time(nullptr));
 
-    const int triangle_count = 25;
     scene* new_scene = malloc(sizeof(scene));
-//    new_scene->triangle_count = triangle_count;
-//    new_scene->triangles = malloc(sizeof(tri) * triangle_count);
-//    new_scene->triangle_colors = malloc(sizeof(uint32_t) * triangle_count);
-//
-//    float2_s half_size = (float2_s){350, 200};
-//
-//    for(int i = 0; i < triangle_count; i++) {
-//        new_scene->triangles[i].a = float2_add(float2_mul_f(float2_rand_d(-200, 200, -200, 200), 0.3f), half_size);
-//        new_scene->triangles[i].b = float2_add(float2_mul_f(float2_rand_d(-200, 200, -200, 200), 0.3f), half_size);
-//        new_scene->triangles[i].c = float2_add(float2_mul_f(float2_rand_d(-200, 200, -200, 200), 0.3f), half_size);
-//
-//        float left = 2000000, top = 2000000, right = -2000000, bottom = -2000000;
-//        if(new_scene->triangles[i].a.x < left) left = new_scene->triangles[i].a.x;
-//        if(new_scene->triangles[i].a.x > right) right = new_scene->triangles[i].a.x;
-//        if(new_scene->triangles[i].a.y < top) top = new_scene->triangles[i].a.y;
-//        if(new_scene->triangles[i].a.y > bottom) bottom = new_scene->triangles[i].a.y;
-//
-//        if(new_scene->triangles[i].b.x < left) left = new_scene->triangles[i].b.x;
-//        if(new_scene->triangles[i].b.x > right) right = new_scene->triangles[i].b.x;
-//        if(new_scene->triangles[i].b.y < top) top = new_scene->triangles[i].b.y;
-//        if(new_scene->triangles[i].b.y > bottom) bottom = new_scene->triangles[i].b.y;
-//
-//        if(new_scene->triangles[i].c.x < left) left = new_scene->triangles[i].c.x;
-//        if(new_scene->triangles[i].c.x > right) right = new_scene->triangles[i].c.x;
-//        if(new_scene->triangles[i].c.y < top) top = new_scene->triangles[i].c.y;
-//        if(new_scene->triangles[i].c.y > bottom) bottom = new_scene->triangles[i].c.y;
-//
-//        new_scene->triangles[i].bb = (rect){f2(left, top), f2(right, bottom)};
-//        new_scene->triangles[i].velocity = float2_rand_d(-0.5f, 0.5f, -0.5f, 0.5f);
-//        new_scene->triangle_colors[i] = (i_rand_d(0x888888, 0xffffff) << 8) | 0xff;
-//    }
-//
-//    new_scene->pixels = malloc(sizeof(uint32_t) * R_PIXEL_COUNT);
 
     return new_scene;
 }
 
 void R_render_scene(app_state_s* state_ptr, volatile scene* scene_to_render) {
-    Viewport_use(state_ptr->renderer_ptr, scene_to_render->base_vp);
-    SDL_RenderClear(state_ptr->renderer_ptr);
+    if(!scene_to_render->base_vp) return;
+    if(!scene_to_render->base_vp->texture) Viewport_init(state_ptr->renderer_ptr, state_ptr->scene->base_vp);
+
+    Viewport_use(scene_to_render->base_vp);
+
     assert(scene_to_render->actor_tree != nullptr, "Tried to render null scene!", return);
     Actor_render((actor_s*) scene_to_render->actor_tree, state_ptr);
-    SDL_SetRenderTarget(state_ptr->renderer_ptr, nullptr);
+
+    Gui_render(state_ptr->renderer_ptr);
+    Viewport_finish();
 }

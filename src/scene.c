@@ -26,57 +26,49 @@ void* Scene_deserialize(string* str) {
 
     scene* scene_ptr = malloc(sizeof(scene));
 
+    scene_ptr->highlights = nullptr;
+
     generic_deserialize_begin("scene")
         deserialize_stage_0()
 
         if (stage == 1) {
             snprintf(value_buf, 128, "%s", buffer);
             {
-                do {
-                    if (strcmp(name_buf, "actor_tree") == 0) {
-                        if (strcmp(value_buf, "{") == 0) {
-                            scene_ptr->actor_tree = (actor_s *) Deserialize_block_to_obj(
-                                    S_convert((str->c_str + marcher - 1)));
-                            unsigned block_count = 1;
-                            while (block_count) {
-                                marcher++;
-                                if (str->c_str[marcher] == '{')block_count++;
-                                if (str->c_str[marcher] == '}')block_count--;
-                                used = true;
-                            }
-                            while (str->c_str[marcher] != '\n')marcher++;
-                            stage = -1;
+                if (strcmp(name_buf, "actor_tree") == 0) {
+                    if (strcmp(value_buf, "{") == 0) {
+                        scene_ptr->actor_tree = (actor_s *) Deserialize_block_to_obj(
+                                S_convert((str->c_str + marcher - 1)));
+                        unsigned block_count = 1;
+                        while (block_count) {
+                            marcher++;
+                            if (str->c_str[marcher] == '{')block_count++;
+                            if (str->c_str[marcher] == '}')block_count--;
+                            used = true;
                         }
+                        while (str->c_str[marcher] != '\n')marcher++;
+                        stage = -1;
                     }
                 }
-                while (0);
-                do {
-                    if (strcmp(name_buf, "base_vp") == 0) {
-                        if (strcmp(value_buf, "{") == 0) {
-                            scene_ptr->base_vp = (viewport *) Deserialize_block_to_obj(
-                                    S_convert((str->c_str + marcher - 1)));
-                            unsigned block_count = 1;
-                            while (block_count) {
-                                marcher++;
-                                if (str->c_str[marcher] == '{')block_count++;
-                                if (str->c_str[marcher] == '}')block_count--;
-                                used = true;
-                            }
-                            while (str->c_str[marcher] != '\n')marcher++;
-                            stage = -1;
+                if (strcmp(name_buf, "base_vp") == 0) {
+                    if (strcmp(value_buf, "{") == 0) {
+                        scene_ptr->base_vp = (viewport *) Deserialize_block_to_obj(
+                                S_convert((str->c_str + marcher - 1)));
+                        unsigned block_count = 1;
+                        while (block_count) {
+                            marcher++;
+                            if (str->c_str[marcher] == '{')block_count++;
+                            if (str->c_str[marcher] == '}')block_count--;
+                            used = true;
                         }
+                        while (str->c_str[marcher] != '\n')marcher++;
+                        stage = -1;
                     }
                 }
-                while (0);
             }
         }
 
-        deserialize_stage_2({
-
-        })
+        deserialize_stage_2()
     generic_deserialize_end()
-
-    Log_print(LOG_LEVEL_DEBUG, "Finished scene!");
 
     return scene_ptr;
 }

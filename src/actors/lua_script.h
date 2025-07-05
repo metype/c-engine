@@ -42,6 +42,7 @@ script* Lua_script_load(const char* script_path);
 void Lua_create_stack_table(lua_State* state, lua_table_entry table_data[], int len);
 void Lua_script_setup_actor_table(lua_State* state, actor_s* actor);
 
+int Lua_gui_button(lua_State* state);
 int Lua_get_actor_path(struct lua_State*);
 int Lua_get_actor_from_path(struct lua_State*);
 int Lua_get_actor_handle_from_path(struct lua_State*);

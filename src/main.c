@@ -10,6 +10,8 @@
 #include "rendering.h"
 #include "filesystem.h"
 #include "string.h"
+#include "scene.h"
+#include "viewport.h"
 
 #include "tests/test_suite.h"
 #include "tests/serialization_tests.h"
@@ -34,6 +36,8 @@
 void register_and_run_tests();
 void load_args(int argc, char** argv, argument * all_args, int list_len);
 void draw_splash(app_state_s* state_ptr);
+
+viewport* root_vp;
 
 SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     struct timeval tp1;
@@ -120,6 +124,16 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
 
     SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 
+    root_vp = malloc(sizeof(viewport));
+    root_vp->type = VIEWPORT_NO_SCALE;
+    root_vp->width = 1920;
+    root_vp->height = 1080;
+    root_vp->x = 0;
+    root_vp->y = 0;
+    Viewport_init(renderer, root_vp);
+
+    Viewport_use(root_vp);
+
     return SDL_APP_CONTINUE;
 }
 
@@ -198,7 +212,7 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
     }
     state_ptr->perf_metrics_ptr->fps /= (float) state_ptr->perf_metrics_ptr->fps_arr_len;
 
-    SDL_SetRenderDrawColor(state_ptr->renderer_ptr, 0, 0, 0, SDL_ALPHA_OPAQUE);
+    SDL_SetRenderDrawColor(state_ptr->renderer_ptr, 120, 0, 250, SDL_ALPHA_OPAQUE);
     SDL_RenderClear(state_ptr->renderer_ptr);
 
     int err = pthread_mutex_trylock(Engine_get_actor_mutex());
@@ -210,11 +224,14 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
         state_ptr->perf_metrics_ptr->time_in_tick = Minf(
                 state_ptr->perf_metrics_ptr->tick_timer / Engine_get_tick_frate(), 1);
         state_ptr->perf_metrics_ptr->tick_timer += state_ptr->perf_metrics_ptr->dt;
+
         R_render_scene(state_ptr, state_ptr->scene);
+
         pthread_mutex_unlock(Engine_get_actor_mutex());
     }
 
-
+    SDL_SetRenderTarget(state_ptr->renderer_ptr, nullptr);
+    SDL_RenderTexture(state_ptr->renderer_ptr, root_vp->texture, nullptr, nullptr);
     SDL_RenderPresent(state_ptr->renderer_ptr);
 
     thread_info_s* threads = Engine_get_threads();

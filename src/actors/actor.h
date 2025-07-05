@@ -6,6 +6,7 @@
 #include "../serialization.h"
 #include "../structures/list.h"
 #include "../transform.h"
+#include "../scene.h"
 
 #include <SDL3/SDL_events.h>
 
@@ -19,6 +20,7 @@
 #define actor_thinker(name) M_CALLBACK(name, void, struct actor_s*, struct app_state*)
 #define actor_init(name) M_CALLBACK(name, void, struct actor_s*, struct app_state*)
 #define actor_render(name) M_CALLBACK(name, void, struct actor_s*, struct app_state*)
+#define actor_recalc_bb(name) M_CALLBACK(name, void, struct actor_s*)
 #define actor_event(name) M_CALLBACK(name, void, struct actor_s*, struct app_state*, SDL_Event*)
 
 typedef struct script_s script;
@@ -26,8 +28,11 @@ typedef struct script_s script;
 typedef struct actor_s {
     transform_s transform; // Holds position, rotation, and scale data of this actor.
     transform_s pre_transform; // Holds position, rotation, and scale data of this actor on the previous tick, used for lerping in render.
+    rect* bb; // The bounding box of this actor, set to null for the getter to recalculate.
 
     bool visible; // If true, render is called on this actor and its children. If not, rendering is skipped for this actor and its children.
+    bool process; // If true, think is called on this actor and its children. If not, thinking is skipped for this actor and its children.
+
     int ticks_since_spawn; // Set to 0 at actor creation and incremented once every time its thinker is called.
     char* actor_id; // The ID of this actor, non-unique.
     char* name; // The name of this actor, should be unique in parent.
@@ -38,6 +43,7 @@ typedef struct actor_s {
     actor_render(render); // Rendering method.
     actor_render(late_render); // Late rendering method, called after all children are processed.
     actor_event(event); // Event handling method.
+    actor_recalc_bb(recalc_bb); //Method to calculate the bounding box of this actor.
 
     struct actor_s* parent; // Pointer to the parent actor.
     list_s* children; // List of children actors.
@@ -47,13 +53,14 @@ typedef struct actor_s {
 } actor_s;
 
 typedef struct actor_def_s {
-    char* actor_id;
+    char* actor_id; // The ID of this actor definition.
 
-    actor_thinker(thinker);
-    actor_init(init);
-    actor_render(render);
-    actor_render(late_render);
-    actor_event(event);
+    actor_thinker(thinker); // See actor_s::thinker
+    actor_init(init); // See actor_s::init
+    actor_render(render); // See actor_s::render
+    actor_render(late_render); // See actor_s::late_render
+    actor_event(event); // See actor_s::event
+    actor_recalc_bb(recalc_bb); // See actor_s::recalc_bb
 } actor_def_s;
 
 void Actor_tick(actor_s* actor, struct app_state* state_ptr);
@@ -87,7 +94,7 @@ char* Actor_get_path(actor_s* actor);
  */
 void Actor_destroy(actor_s* actor);
 
-void Actor_register_def(char* actor_id, actor_init(actor_init), actor_thinker(actor_think), actor_render(actor_render), actor_render(actor_late_render), actor_event(actor_event));
+void Actor_register_def(char* actor_id, actor_init(actor_init), actor_thinker(actor_think), actor_render(actor_render), actor_render(actor_late_render), actor_event(actor_event), actor_recalc_bb(actor_recalc_bb));
 void Actor_register_default_defs();
 
 /**
@@ -105,6 +112,8 @@ void Actor_register_default_defs();
 transform_s Actor_get_transform(actor_s* actor);
 transform_s Actor_get_transform_lerp(actor_s* actor, float time_in_tick);
 transform_s Actor_get_local_transform_lerp(actor_s* actor, float time_in_tick);
+
+rect Actor_get_bounding_box(actor_s* actor);
 
 actor_s* Actor_from_handle(int handle);
 
