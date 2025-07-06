@@ -14,6 +14,7 @@
 #include "filesystem.h"
 #include "viewport.h"
 #include "actors/editor_actor.h"
+#include "input.h"
 
 #if defined(__linux__)
 #include <sys/time.h>
@@ -94,6 +95,8 @@ void *Engine_tick(void *arg)
 
     thread_info_s* this_thread = Engine_get_thread_info(pthread_self());
 
+    this_thread->type = THREAD_TYPE_TICK;
+
     while(!quit)
     {
         // Let's not fucking max out a core while we're paused lmao
@@ -136,6 +139,7 @@ void *Engine_tick(void *arg)
         float delta = (float)(us2 - us1);
         float wait_time = (1.0f / (float) effective_tick_rate) - (delta * 0.000001f);
 
+        Input_end_tick();
         if(wait_time > 0) Thread_sleep(wait_time);
     }
     Engine_end_thread();

@@ -25,6 +25,36 @@
 
 typedef struct script_s script;
 
+enum property_type {
+    PROP_TYPE_INT = 0,
+    PROP_TYPE_FLOAT = 1,
+    PROP_TYPE_STR = 2,
+    PROP_TYPE_BOOL = 3
+};
+
+typedef struct actor_prop_value {
+    union {
+        int int_val;
+        float float_val;
+        char* str_val;
+        bool bool_val;
+    };
+    int type;
+} actor_prop_value_s;
+
+typedef struct actor_property {
+    union {
+        int* int_val;
+        float* float_val;
+        char** str_val;
+        bool* bool_val;
+    };
+    int type;
+    char* name;
+    struct actor_property* next; // teehee i liek linked list :3
+    struct actor_property* prev; // ooooh doubleee
+} actor_property_s;
+
 typedef struct actor_s {
     transform_s transform; // Holds position, rotation, and scale data of this actor.
     transform_s pre_transform; // Holds position, rotation, and scale data of this actor on the previous tick, used for lerping in render.
@@ -38,12 +68,14 @@ typedef struct actor_s {
     char* name; // The name of this actor, should be unique in parent.
     int handle; // The unique handle for this actor, only valid while the actor is valid.
 
+    actor_property_s* properties;
+
     actor_thinker(thinker); // Thinker method.
     actor_init(init); // Initialization method.
     actor_render(render); // Rendering method.
     actor_render(late_render); // Late rendering method, called after all children are processed.
     actor_event(event); // Event handling method.
-    actor_recalc_bb(recalc_bb); //Method to calculate the bounding box of this actor.
+    actor_recalc_bb(recalc_bb); // Method to calculate the bounding box of this actor.
 
     struct actor_s* parent; // Pointer to the parent actor.
     list_s* children; // List of children actors.
@@ -77,6 +109,28 @@ actor_s* Actor_create_s(transform_s transform, char* actor_id);
 actor_s* Actor_create(transform_s transform, actor_def_s* actor_definition);
 actor_def_s* Actor_get_def(char* actor_id);
 char* Actor_get_path(actor_s* actor);
+
+void Actor_add_property(actor_s* actor, actor_property_s* property);
+bool Actor_has_property(actor_s* actor, const char* name);
+actor_property_s* Actor_get_property(actor_s* actor, const char* name);
+const char* Actor_get_prop_type_name(actor_property_s* prop);
+
+void Actor_add_int_prop(actor_s* actor, const char* name, int* val);
+void Actor_add_float_prop(actor_s* actor, const char* name, float* val);
+void Actor_add_str_prop(actor_s* actor, const char* name, char** val);
+void Actor_add_bool_prop(actor_s* actor, const char* name, bool* val);
+
+void Actor_set_prop(actor_s* actor, const char* name, actor_prop_value_s value);
+void Actor_set_int_prop(actor_s* actor, const char* name, int val);
+void Actor_set_float_prop(actor_s* actor, const char* name, float val);
+void Actor_set_str_prop(actor_s* actor, const char* name, char* val);
+void Actor_set_bool_prop(actor_s* actor, const char* name, bool val);
+
+actor_prop_value_s Actor_get_prop(actor_s* actor, const char* name);
+int Actor_get_int_prop(actor_s* actor, const char* name);
+float Actor_get_float_prop(actor_s* actor, const char* name);
+char* Actor_get_str_prop(actor_s* actor, const char* name);
+bool Actor_get_bool_prop(actor_s* actor, const char* name);
 
 /**
  *  Destroys an actor, frees all memory associated with it and removes the actor from

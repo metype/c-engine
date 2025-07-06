@@ -21,6 +21,7 @@
 #if CENGINE_LINUX
 #include "getopt.h"
 #include "util.h"
+#include "input.h"
 #include <sys/time.h>
 #include <SDL3_image/SDL_image.h>
 #elif CENGINE_WIN32
@@ -56,6 +57,8 @@ SDL_AppResult SDL_AppInit(void **application_state, int argc, char **argv) {
     for(int i = 0; i < state_ptr->perf_metrics_ptr->fps_arr_len; i++) {
         state_ptr->perf_metrics_ptr->previous_fps_arr[i] = 1.f;
     }
+
+    Input_new_state();
 
     struct argument* arg_map = malloc(sizeof(struct argument));
     int arg_idx = 0;
@@ -234,6 +237,8 @@ SDL_AppResult SDL_AppIterate(void *application_state) {
     SDL_RenderTexture(state_ptr->renderer_ptr, root_vp->texture, nullptr, nullptr);
     SDL_RenderPresent(state_ptr->renderer_ptr);
 
+    Input_end_frame();
+
     thread_info_s* threads = Engine_get_threads();
     thread_info_s* cur_info = threads;
 
@@ -267,6 +272,7 @@ SDL_AppResult SDL_AppEvent(void *application_state, SDL_Event *event) {
             break;
     }
     Engine_event(state_ptr, event);
+    Input_event(event);
 
     return SDL_APP_CONTINUE;
 }

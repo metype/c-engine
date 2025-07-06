@@ -8,6 +8,9 @@
 void tilemap_actor_init(actor_s* self, app_state_s* state_ptr) {
     ACTOR_PRE_INIT(self, tilemap_actor_data_s);
 
+    Actor_add_int_prop(self, "width", &data->tilemap_width);
+    Actor_add_int_prop(self, "height", &data->tilemap_height);
+
     srandom(time(NULL));
 
     data->tilemap = malloc(sizeof(long) * data->tilemap_width);

@@ -43,6 +43,11 @@ void Actor_tick(actor_s* actor, struct app_state* state_ptr) { // NOLINT(*-no-re
         if(!actor->render) actor->render = &empty_render;
         if(!actor->late_render) actor->late_render = &empty_render;
 
+        Actor_add_float_prop(actor, "transform.position.x", &actor->transform.position.x);
+        Actor_add_float_prop(actor, "transform.position.y", &actor->transform.position.y);
+        Actor_add_float_prop(actor, "transform.scale.x", &actor->transform.scale.x);
+        Actor_add_float_prop(actor, "transform.scale.y", &actor->transform.scale.y);
+
         actor->init(actor, state_ptr);
         if(actor->script) actor->script->setup_func(actor->script);
         if(actor->script) actor->script->init_func(actor->script, actor);
@@ -148,6 +153,8 @@ actor_s* Actor_create(transform_s transform, actor_def_s* actor_definition) {
 
     new_actor->parent = nullptr;
     new_actor->children = list_new(sizeof(actor_s*));
+
+    new_actor->properties = nullptr;
 
     new_actor->thinker = actor_definition->thinker;
     new_actor->init = actor_definition->init;
@@ -621,4 +628,196 @@ void Actor_register_deserialization_func(char* id, deserialization_func(deserial
         Map_init(registered_actor_deserialization_types);
     }
     map_set(registered_actor_deserialization_types, id, deserializer);
+}
+
+void Actor_add_property(actor_s* actor, actor_property_s* property) {
+    if(!actor || !property) return;
+    property->next = nullptr;
+    property->prev = nullptr;
+
+    if(!actor->properties) {
+        actor->properties = property;
+        return;
+    }
+
+    actor_property_s* last = actor->properties;
+    while(last != nullptr) {
+        if(!last->next) {
+            last->next = property;
+            property->prev = last;
+            break;
+        }
+        last = last->next;
+    }
+
+}
+
+bool Actor_has_property(actor_s* actor, const char* name) {
+    return Actor_get_property(actor, name) != nullptr;
+}
+
+actor_property_s* Actor_get_property(actor_s* actor, const char* name) {
+    if(!actor) return nullptr;
+
+    actor_property_s* check = actor->properties;
+    while(check) {
+        if(strcmp(name, check->name) == 0) {
+            return check;
+        }
+        check = check->next;
+    }
+
+    return nullptr;
+}
+
+const char* Actor_get_prop_type_name(actor_property_s* prop) {
+    if(!prop) return "UNKNOWN";
+    switch(prop->type) {
+        case PROP_TYPE_INT: return "INT";
+        case PROP_TYPE_BOOL: return "BOOLEAN";
+        case PROP_TYPE_STR: return "STRING";
+        case PROP_TYPE_FLOAT: return "FLOAT";
+    }
+    return "UNKNOWN";
+}
+
+void Actor_add_int_prop(actor_s* actor, const char* name, int* val) {
+    actor_property_s* new_prop = malloc(sizeof(actor_property_s));
+    new_prop->type = PROP_TYPE_INT;
+    new_prop->int_val = val;
+    new_prop->name = strdup(name);
+    Actor_add_property(actor, new_prop);
+}
+void Actor_add_float_prop(actor_s* actor, const char* name, float* val) {
+    actor_property_s* new_prop = malloc(sizeof(actor_property_s));
+    new_prop->type = PROP_TYPE_FLOAT;
+    new_prop->float_val = val;
+    new_prop->name = strdup(name);
+    Actor_add_property(actor, new_prop);
+}
+
+void Actor_add_str_prop(actor_s* actor, const char* name, char** val) {
+    actor_property_s* new_prop = malloc(sizeof(actor_property_s));
+    new_prop->type = PROP_TYPE_STR;
+    new_prop->str_val = val;
+    new_prop->name = strdup(name);
+    Actor_add_property(actor, new_prop);
+}
+
+void Actor_add_bool_prop(actor_s* actor, const char* name, bool* val) {
+    actor_property_s* new_prop = malloc(sizeof(actor_property_s));
+    new_prop->type = PROP_TYPE_BOOL;
+    new_prop->bool_val = val;
+    new_prop->name = strdup(name);
+    Actor_add_property(actor, new_prop);
+}
+
+void Actor_set_prop(actor_s* actor, const char* name, actor_prop_value_s value) {
+    if(!actor) return;
+
+    actor_property_s* prop = Actor_get_property(actor, name);
+    if(!prop) {
+        Log_printf(LOG_LEVEL_ERROR, "Failed to set property %s on actor %s (%s). Property not found.", name, actor->name, actor->actor_id);
+        return;
+    }
+    if(prop->type != value.type) {
+        Log_printf(LOG_LEVEL_ERROR, "Failed to set property %s on actor %s (%s). Property is of type %s, but value is of type %s.", name, actor->name, actor->actor_id, Actor_get_prop_type_name(prop), value.type);
+        return;
+    }
+    switch(prop->type) {
+        case PROP_TYPE_INT:
+            if(!prop->int_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to set property %s on actor %s (%s). Property is of correct type, and exists, but is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            *prop->int_val = value.int_val;
+            break;
+        case PROP_TYPE_FLOAT:
+            if(!prop->float_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to set property %s on actor %s (%s). Property is of correct type, and exists, but is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            *prop->float_val = value.float_val;
+            break;
+        case PROP_TYPE_BOOL:
+            if(!prop->bool_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to set property %s on actor %s (%s). Property is of correct type, and exists, but is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            *prop->bool_val = value.bool_val;
+            break;
+        case PROP_TYPE_STR:
+            if(!prop->str_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to set property %s on actor %s (%s). Property is of correct type, and exists, but is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            if(*prop->str_val) free(*prop->str_val);
+            *prop->str_val = strdup(value.str_val);
+            break;
+    }
+}
+
+void Actor_set_int_prop(actor_s* actor, const char* name, int val) {
+    Actor_set_prop(actor, name, (actor_prop_value_s){.type = PROP_TYPE_INT, .int_val = val});
+}
+
+void Actor_set_float_prop(actor_s* actor, const char* name, float val) {
+    Actor_set_prop(actor, name, (actor_prop_value_s){.type = PROP_TYPE_FLOAT, .float_val = val});
+}
+
+void Actor_set_str_prop(actor_s* actor, const char* name, char* val) {
+    Actor_set_prop(actor, name, (actor_prop_value_s){.type = PROP_TYPE_STR, .str_val = val});
+}
+
+void Actor_set_bool_prop(actor_s* actor, const char* name, bool val) {
+    Actor_set_prop(actor, name, (actor_prop_value_s){.type = PROP_TYPE_BOOL, .bool_val = val});
+}
+
+actor_prop_value_s Actor_get_prop(actor_s* actor, const char* name) {
+    if(!actor) return (actor_prop_value_s){.type = -1, .int_val = 0};
+
+    actor_property_s* prop = Actor_get_property(actor, name);
+    if(!prop) {
+        Log_printf(LOG_LEVEL_ERROR, "Failed to set property %s on actor %s (%s). Property not found.", name, actor->name, actor->actor_id);
+        return (actor_prop_value_s){.type = -1, .int_val = 0};
+    }
+    switch(prop->type) {
+        case PROP_TYPE_INT:
+            if(!prop->int_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to get property %s on actor %s (%s). Property is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            return (actor_prop_value_s){.type = PROP_TYPE_INT, .int_val = *prop->int_val};
+            break;
+        case PROP_TYPE_FLOAT:
+            if(!prop->float_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to get property %s on actor %s (%s). Property is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            return (actor_prop_value_s){.type = PROP_TYPE_FLOAT, .float_val = *prop->float_val};
+        case PROP_TYPE_BOOL:
+            if(!prop->bool_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to get property %s on actor %s (%s). Property is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            return (actor_prop_value_s){.type = PROP_TYPE_BOOL, .bool_val = *prop->bool_val};
+        case PROP_TYPE_STR:
+            if(!prop->str_val) {
+                Log_printf(LOG_LEVEL_ERROR, "Failed to get property %s on actor %s (%s). Property is misconfigured.", name, actor->name, actor->actor_id);
+            }
+            return (actor_prop_value_s){.type = PROP_TYPE_STR, .str_val = *prop->str_val};
+    }
+    return (actor_prop_value_s){.type = -1, .int_val = 0};
+}
+
+int Actor_get_int_prop(actor_s* actor, const char* name) {
+    return Actor_get_prop(actor, name).int_val;
+}
+
+float Actor_get_float_prop(actor_s* actor, const char* name) {
+    return Actor_get_prop(actor, name).float_val;
+}
+
+char* Actor_get_str_prop(actor_s* actor, const char* name){
+    actor_prop_value_s val = Actor_get_prop(actor, name);
+    // reduce external checks requires, a prop getter will never return a null string, just an empty one.
+    if(!val.str_val) return "";
+    return val.str_val;
+}
+
+bool Actor_get_bool_prop(actor_s* actor, const char* name) {
+    return Actor_get_prop(actor, name).bool_val;
 }

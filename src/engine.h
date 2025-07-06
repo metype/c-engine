@@ -21,9 +21,17 @@ enum USER_EVENT_TYPE {
     USER_EVENT_THREAD_STOPPING,
 };
 
+enum THREAD_TYPE {
+    THREAD_TYPE_TICK,
+    THREAD_TYPE_RENDER,
+    THREAD_TYPE_SOUND,
+    THREAD_TYPE_MISC,
+};
+
 typedef struct thread_info_s {
     pthread_t thread_id;
     int status;
+    int type;
     struct thread_info_s* next;
     struct thread_info_s* prev;
 } thread_info_s;

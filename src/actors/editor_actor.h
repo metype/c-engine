@@ -18,6 +18,7 @@ typedef struct editor_actor_data_s {
     bool lp_resize;
     bool rp_resize;
     bool bp_resize;
+    bool used_cursor;
     actor_s* selected_actor;
 } editor_actor_data_s;
 
